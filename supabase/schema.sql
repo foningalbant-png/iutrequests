@@ -1,9 +1,27 @@
 -- ============================================
 -- IUTRequests - Schema Base de Donnees Supabase
--- A executer dans l'editeur SQL de Supabase
+-- Version avec nettoyage automatique
 -- ============================================
 
--- Types enumeres
+-- Nettoyage (supprimer les tables existantes)
+DROP TABLE IF EXISTS audit_logs CASCADE;
+DROP TABLE IF EXISTS admin_category_assignments CASCADE;
+DROP TABLE IF EXISTS admin_department_assignments CASCADE;
+DROP TABLE IF EXISTS notifications CASCADE;
+DROP TABLE IF EXISTS request_messages CASCADE;
+DROP TABLE IF EXISTS request_attachments CASCADE;
+DROP TABLE IF EXISTS request_status_history CASCADE;
+DROP TABLE IF EXISTS request_assignments CASCADE;
+DROP TABLE IF EXISTS requests CASCADE;
+DROP TABLE IF EXISTS request_templates CASCADE;
+DROP TABLE IF EXISTS request_categories CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
+DROP TABLE IF EXISTS programs CASCADE;
+DROP TABLE IF EXISTS departments CASCADE;
+DROP TYPE IF EXISTS request_status CASCADE;
+DROP TYPE IF EXISTS user_role CASCADE;
+
+-- Types
 CREATE TYPE user_role AS ENUM ('STUDENT', 'ADMIN', 'SUPER_ADMIN');
 CREATE TYPE request_status AS ENUM (
   'DRAFT', 'SUBMITTED', 'RECEIVED', 'IN_PROGRESS',
@@ -38,10 +56,11 @@ CREATE TABLE programs (
   UNIQUE(code, department_id)
 );
 
--- Profils utilisateurs (extension de auth.users de Supabase)
+-- Profils utilisateurs
 CREATE TABLE profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT NOT NULL,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL UNIQUE,
+  password TEXT,
   first_name TEXT NOT NULL,
   last_name TEXT NOT NULL,
   phone TEXT,
@@ -49,14 +68,11 @@ CREATE TABLE profiles (
   photo_url TEXT,
   role user_role DEFAULT 'STUDENT',
   is_active BOOLEAN DEFAULT true,
-  department_id UUID REFERENCES departments(id),
-  program_id UUID REFERENCES programs(id),
+  department TEXT,
+  program TEXT,
   level TEXT,
-  preferred_language TEXT DEFAULT 'fr',
-  preferred_theme TEXT DEFAULT 'light',
   created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  last_login_at TIMESTAMPTZ
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Categories de requetes
@@ -65,21 +81,11 @@ CREATE TABLE request_categories (
   name TEXT NOT NULL,
   description TEXT,
   is_active BOOLEAN DEFAULT true,
-  department_id UUID REFERENCES departments(id),
-  sort_order INT DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Modeles de requetes
-CREATE TABLE request_templates (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  category_id UUID UNIQUE REFERENCES request_categories(id) ON DELETE CASCADE,
-  instructions TEXT NOT NULL DEFAULT '',
-  body_template TEXT NOT NULL DEFAULT '',
+  instructions TEXT,
+  body_template TEXT,
   required_documents TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Requetes
@@ -89,120 +95,102 @@ CREATE TABLE requests (
   title TEXT NOT NULL,
   description TEXT NOT NULL,
   status request_status DEFAULT 'DRAFT',
-  student_id UUID NOT NULL REFERENCES profiles(id),
-  department_id UUID NOT NULL REFERENCES departments(id),
-  program_id UUID REFERENCES programs(id),
-  category_id UUID NOT NULL REFERENCES request_categories(id),
-  priority INT DEFAULT 0,
+  student_id UUID REFERENCES profiles(id),
+  student_name TEXT,
+  student_email TEXT,
+  student_phone TEXT,
+  student_matricule TEXT,
+  department TEXT,
+  program TEXT,
+  category_name TEXT,
+  priority TEXT DEFAULT 'NORMALE',
+  file_names TEXT[],
   first_viewed_at TIMESTAMPTZ,
   resolved_at TIMESTAMPTZ,
   closed_at TIMESTAMPTZ,
   reopened_count INT DEFAULT 0,
   reminder_count INT DEFAULT 0,
-  last_reminder_at TIMESTAMPTZ,
+  satisfaction_score INT,
+  satisfaction_comment TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Assignations admin-requete
-CREATE TABLE request_assignments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  request_id UUID NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
-  admin_id UUID NOT NULL REFERENCES profiles(id),
-  assigned_at TIMESTAMPTZ DEFAULT now(),
-  assigned_by UUID,
-  is_active BOOLEAN DEFAULT true,
-  UNIQUE(request_id, admin_id)
 );
 
 -- Historique des statuts
 CREATE TABLE request_status_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  request_id UUID NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
-  old_status request_status,
-  new_status request_status NOT NULL,
-  changed_by_id UUID NOT NULL REFERENCES profiles(id),
-  reason TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Pieces jointes
-CREATE TABLE request_attachments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   request_id UUID REFERENCES requests(id) ON DELETE CASCADE,
-  message_id UUID,
-  file_name TEXT NOT NULL,
-  file_path TEXT NOT NULL,
-  mime_type TEXT NOT NULL,
-  file_size INT NOT NULL,
-  checksum TEXT,
-  uploaded_by_id UUID NOT NULL REFERENCES profiles(id),
+  status TEXT NOT NULL,
+  old_status TEXT,
+  changed_by TEXT,
+  reason TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Messages
 CREATE TABLE request_messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  request_id UUID NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
-  sender_id UUID NOT NULL REFERENCES profiles(id),
+  request_id UUID REFERENCES requests(id) ON DELETE CASCADE,
+  sender_id UUID,
+  sender_name TEXT,
+  sender_role TEXT,
   content TEXT NOT NULL,
-  is_internal BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Notifications
 CREATE TABLE notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   request_id UUID REFERENCES requests(id) ON DELETE SET NULL,
+  request_ref TEXT,
   type TEXT NOT NULL,
   title TEXT NOT NULL,
   message TEXT NOT NULL,
   is_read BOOLEAN DEFAULT false,
-  read_at TIMESTAMPTZ,
-  email_sent BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Assignations admin-departement
-CREATE TABLE admin_department_assignments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  department_id UUID NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(user_id, department_id)
-);
-
--- Assignations admin-categorie
-CREATE TABLE admin_category_assignments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  category_id UUID NOT NULL REFERENCES request_categories(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(user_id, category_id)
-);
-
--- Journal d'audit
+-- Journal d audit
 CREATE TABLE audit_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  user_name TEXT,
+  user_email TEXT,
   action TEXT NOT NULL,
-  entity TEXT NOT NULL,
-  entity_id UUID,
   details TEXT,
-  ip_address TEXT,
-  user_agent TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Index
+CREATE INDEX idx_profiles_email ON profiles(email);
+CREATE INDEX idx_profiles_role ON profiles(role);
 CREATE INDEX idx_requests_student ON requests(student_id);
-CREATE INDEX idx_requests_department ON requests(department_id);
-CREATE INDEX idx_requests_category ON requests(category_id);
 CREATE INDEX idx_requests_status ON requests(status);
 CREATE INDEX idx_requests_ref ON requests(reference_number);
 CREATE INDEX idx_notifications_user ON notifications(user_id, is_read);
 CREATE INDEX idx_audit_created ON audit_logs(created_at);
+
+-- Activer RLS sur toutes les tables
+ALTER TABLE departments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE programs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE request_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE request_status_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE request_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+
+-- Politiques RLS (autoriser l acces public pour le moment)
+CREATE POLICY "allow_all" ON departments FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all" ON programs FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all" ON profiles FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all" ON request_categories FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all" ON requests FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all" ON request_status_history FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all" ON request_messages FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all" ON notifications FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all" ON audit_logs FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================
 -- DONNEES INITIALES
@@ -233,23 +221,27 @@ INSERT INTO programs (name, code, department_id) VALUES
   ('Techniques de Commercialisation', 'TCO-F', (SELECT id FROM departments WHERE code = 'TCO')),
   ('Metiers du Multimedia et de l''Internet', 'MMI', (SELECT id FROM departments WHERE code = 'TCO'));
 
--- 18 Categories de requetes
+-- 18 Categories
 INSERT INTO request_categories (name, description) VALUES
   ('Reclamation de note', 'Contestation d''une note jugee erronee par l''etudiant.'),
   ('Note manquante', 'Note d''une evaluation non publiee ou absente du releve.'),
   ('Consultation de copie', 'Demande de consultation d''une copie d''examen corrigee.'),
   ('Attestation de scolarite', 'Demande de delivrance d''une attestation de scolarite.'),
   ('Certificat de presence', 'Demande de certificat justifiant la presence a l''etablissement.'),
-  ('Erreur de nom', 'Signalement d''une erreur sur le nom ou le prenom dans les documents officiels.'),
-  ('Erreur de matricule', 'Signalement d''une erreur sur le numero de matricule de l''etudiant.'),
-  ('Erreur administrative', 'Toute autre erreur constatee dans un document administratif.'),
-  ('Justification d''absence', 'Depot d''un justificatif pour une absence en cours ou en examen.'),
-  ('Regularisation d''absence', 'Demande de regularisation apres une absence non justifiee a temps.'),
-  ('Paiement non pris en compte', 'Signalement d''un paiement de frais de scolarite non enregistre.'),
-  ('Probleme de quittance', 'Erreur ou anomalie constatee sur une quittance de paiement.'),
+  ('Erreur de nom', 'Signalement d''une erreur sur le nom ou le prenom.'),
+  ('Erreur de matricule', 'Signalement d''une erreur sur le numero de matricule.'),
+  ('Erreur administrative', 'Toute autre erreur dans un document administratif.'),
+  ('Justification d''absence', 'Depot d''un justificatif pour une absence.'),
+  ('Regularisation d''absence', 'Demande de regularisation apres une absence non justifiee.'),
+  ('Paiement non pris en compte', 'Signalement d''un paiement non enregistre.'),
+  ('Probleme de quittance', 'Erreur sur une quittance de paiement.'),
   ('Convention de stage', 'Demande d''etablissement d''une convention de stage.'),
-  ('Validation de stage', 'Demande de validation administrative d''un stage effectue.'),
-  ('Lettre d''introduction', 'Demande de lettre d''introduction aupres d''une entreprise ou d''un organisme.'),
-  ('Changement de groupe', 'Demande de changement de groupe de travaux diriges ou pratiques.'),
-  ('Changement de filiere', 'Demande de changement de filiere au sein du departement ou de l''etablissement.'),
-  ('Reclamation d''emploi du temps', 'Signalement d''un conflit ou d''une erreur dans l''emploi du temps.');
+  ('Validation de stage', 'Demande de validation administrative d''un stage.'),
+  ('Lettre d''introduction', 'Demande de lettre d''introduction aupres d''une entreprise.'),
+  ('Changement de groupe', 'Demande de changement de groupe de TD ou TP.'),
+  ('Changement de filiere', 'Demande de changement de filiere.'),
+  ('Reclamation d''emploi du temps', 'Signalement d''un conflit dans l''emploi du temps.');
+
+-- Compte Super Admin
+INSERT INTO profiles (email, password, first_name, last_name, role, is_active) VALUES
+  ('pepinierecommercialeiut@gmail.com', '@iutrequet2026mmi2', 'Super', 'Administrateur', 'SUPER_ADMIN', true);

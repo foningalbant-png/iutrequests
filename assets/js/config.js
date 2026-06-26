@@ -4,11 +4,11 @@
 
 const CONFIG = {
   // Supabase - Remplacez par vos propres cles apres creation du projet sur supabase.com
-  SUPABASE_URL: 'https://VOTRE_PROJET.supabase.co',
-  SUPABASE_ANON_KEY: 'VOTRE_CLE_ANON_PUBLIQUE',
+  SUPABASE_URL: 'https://yfnipfjbkkkvidbotvtp.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_B6tjVpl6QJXFSfJgBc7aVw_Q4_4goXJ',
 
   // Mode demo (utilise localStorage au lieu de Supabase)
-  DEMO_MODE: true,
+  DEMO_MODE: false,
 
   // Application
   APP_NAME: 'IUTRequests',
