@@ -10,13 +10,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <link rel="stylesheet" href="../assets/css/style.css?v=6">
+  <link rel="stylesheet" href="../assets/css/style.css?v=8">
 </head>
 <body>
   <div id="app"><div class="loading-page" style="min-height:100vh"><div class="spinner"></div><p>Chargement...</p></div></div>
-  <script src="../assets/js/config.js?v=6"></script>
-  <script src="../assets/js/i18n.js?v=6"></script>
-  <script src="../assets/js/auth.js?v=6"></script>
+  <script src="../assets/js/config.js?v=8"></script>
+  <script src="../assets/js/i18n.js?v=8"></script>
+  <script src="../assets/js/auth.js?v=8"></script>
   <script>
   const SA = {
     init() {
@@ -25,7 +25,7 @@
       this.route();
     },
 
-    route() {
+    async route() {
       const hash = location.hash.slice(1) || '/';
       const user = Auth.getUser();
       if (hash === '/login' || !user || user.role !== 'SUPER_ADMIN') {
@@ -33,21 +33,23 @@
         if (hash === '/login') { this.showLogin(); return; }
       }
       const path = hash.split('?')[0];
+      // Show loading for data pages
+      document.getElementById('app').innerHTML = this.layout('<div class="loading-page"><div class="spinner"></div><p>Chargement...</p></div>', path);
       let c = '';
       switch (path) {
-        case '/': case '/dashboard': c = this.pgDash(); break;
-        case '/requests': c = this.pgReqs(); break;
+        case '/': case '/dashboard': c = await this.pgDash(); break;
+        case '/requests': c = await this.pgReqs(); break;
         case '/departments': c = this.pgDepts(); break;
         case '/programs': c = this.pgProgs(); break;
         case '/categories': c = this.pgCats(); break;
-        case '/admins': c = this.pgAdmins(); break;
-        case '/superadmins': c = this.pgSuperAdmins(); break;
-        case '/users': c = this.pgUsers(); break;
+        case '/admins': c = await this.pgAdmins(); break;
+        case '/superadmins': c = await this.pgSuperAdmins(); break;
+        case '/users': c = await this.pgUsers(); break;
         case '/audit': c = this.pgAudit(); break;
-        case '/notifications': c = this.pgNotifs(); break;
+        case '/notifications': c = await this.pgNotifs(); break;
         case '/profile': c = this.pgProfile(); break;
         default:
-          if (path.startsWith('/requests/')) c = this.pgReqDetail(path.split('/')[2]);
+          if (path.startsWith('/requests/')) c = await this.pgReqDetail(path.split('/')[2]);
           else c = '<div class="empty-state mt-4"><h2>Page non trouvee</h2></div>';
       }
       document.getElementById('app').innerHTML = this.layout(c, path);
@@ -114,10 +116,10 @@
       </div><div id="toast-container" class="toast-container"></div>`;
     },
 
-    handleLogin(e) {
+    async handleLogin(e) {
       e.preventDefault();
-      const r = Auth.loginSuperAdmin(document.getElementById('sa-email').value, document.getElementById('sa-password').value);
-      if (r.success) { SA.addAudit('CONNEXION','Super Admin connecte'); location.hash='#/dashboard'; this.route(); }
+      const r = await Auth.loginSuperAdmin(document.getElementById('sa-email').value, document.getElementById('sa-password').value);
+      if (r.success) { Auth.addAudit('CONNEXION','Super Admin connecte'); location.hash='#/dashboard'; this.route(); }
       else Utils.toast(r.message,'error');
       return false;
     },
@@ -132,7 +134,7 @@
     addAudit(action, details) {
       const logs = JSON.parse(localStorage.getItem('iut-audit')||'[]');
       const u = Auth.getUser();
-      logs.unshift({ id:'log-'+Date.now(), date:new Date().toISOString(), user:(u?u.firstName+' '+u.lastName:'Systeme'), userEmail:u?.email||'', action:action, details:details });
+      logs.unshift({ id:'log-'+Date.now(), date:new Date().toISOString(), user:(u?(u.first_name||'')+' '+(u.last_name||''):'Systeme'), userEmail:u?.email||'', action:action, details:details });
       if (logs.length > 500) logs.length = 500;
       localStorage.setItem('iut-audit', JSON.stringify(logs));
     },
@@ -142,12 +144,12 @@
     getCats() { let c=JSON.parse(localStorage.getItem('iut-cats')||'null'); if(!c){c=CONFIG.CATEGORIES;localStorage.setItem('iut-cats',JSON.stringify(c));} return c; },
 
     /* ===================== DASHBOARD ===================== */
-    pgDash() {
-      const reqs=RequestStore.getAll(), students=Auth.getAllUsers().filter(u=>u.role==='STUDENT').length, admins=Auth.getAllUsers().filter(u=>u.role==='ADMIN').length;
+    async pgDash() {
+      const reqs=await RequestStore.getAll(); const allU=await Auth.getAllUsers(); const students=allU.filter(u=>u.role==='STUDENT').length; const admins=allU.filter(u=>u.role==='ADMIN').length;
       const pending=reqs.filter(r=>['SUBMITTED','RECEIVED'].includes(r.status)).length;
       const byStatus={}; reqs.forEach(r=>{byStatus[r.status]=(byStatus[r.status]||0)+1;});
-      const byCat={}; reqs.forEach(r=>{const n=r.categoryName||'Autre';byCat[n]=(byCat[n]||0)+1;});
-      const oldest=reqs.filter(r=>['SUBMITTED','RECEIVED','IN_PROGRESS'].includes(r.status)).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt)).slice(0,5);
+      const byCat={}; reqs.forEach(r=>{const n=r.category_name||'Autre';byCat[n]=(byCat[n]||0)+1;});
+      const oldest=reqs.filter(r=>['SUBMITTED','RECEIVED','IN_PROGRESS'].includes(r.status)).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).slice(0,5);
 
       return `
       <div class="page-header"><h1 class="page-title">Tableau de bord global</h1></div>
@@ -165,14 +167,14 @@
           ${Object.keys(byCat).length>0?Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([n,c])=>'<div class="flex items-center justify-between" style="padding:6px 0"><span style="font-size:13px">'+Utils.escapeHtml(n)+'</span><span class="fw-600">'+c+'</span></div>').join(''):'<p class="text-muted">Aucune donnee</p>'}
         </div>
       </div>
-      ${oldest.length>0?'<div class="card mt-3"><div class="card-header"><span class="card-title" style="color:var(--yellow-dark)">Requetes en attente les plus anciennes</span><a href="#/requests" class="btn btn-ghost btn-sm">Tout voir</a></div><div class="table-container"><table><thead><tr><th>Reference</th><th>Objet</th><th>Etudiant</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+oldest.map(r=>'<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td class="font-mono text-primary" style="font-size:13px">'+r.referenceNumber+'</td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-muted" style="font-size:13px">'+(r.studentName||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.createdAt)+'</td></tr>').join('')+'</tbody></table></div></div>':''}`;
+      ${oldest.length>0?'<div class="card mt-3"><div class="card-header"><span class="card-title" style="color:var(--yellow-dark)">Requetes en attente les plus anciennes</span><a href="#/requests" class="btn btn-ghost btn-sm">Tout voir</a></div><div class="table-container"><table><thead><tr><th>Reference</th><th>Objet</th><th>Etudiant</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+oldest.map(r=>'<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td class="font-mono text-primary" style="font-size:13px">'+r.reference_number+'</td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-muted" style="font-size:13px">'+(r.student_name||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.created_at)+'</td></tr>').join('')+'</tbody></table></div></div>':''}`;
     },
 
     /* ===================== REQUETES + RECHERCHE ===================== */
-    pgReqs() {
-      const all=RequestStore.getAll();
+    async pgReqs() {
+      const all=await RequestStore.getAll();
       const search=localStorage.getItem('sa-search')||'';
-      let reqs=search?all.filter(r=>r.referenceNumber.toLowerCase().includes(search.toLowerCase())||r.title.toLowerCase().includes(search.toLowerCase())||(r.studentName||'').toLowerCase().includes(search.toLowerCase())):all;
+      let reqs=search?all.filter(r=>r.reference_number.toLowerCase().includes(search.toLowerCase())||r.title.toLowerCase().includes(search.toLowerCase())||(r.student_name||'').toLowerCase().includes(search.toLowerCase())):all;
       reqs=reqs.slice().reverse();
       return `
       <div class="page-header"><h1 class="page-title">Toutes les requetes (${all.length})</h1></div>
@@ -181,12 +183,12 @@
           <div class="search-wrapper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="form-input" id="sa-search" placeholder="Rechercher par reference, objet ou etudiant..." value="${Utils.escapeHtml(search)}" oninput="localStorage.setItem('sa-search',this.value);SA.route()"></div>
           ${search?'<button class="btn btn-ghost btn-sm" onclick="localStorage.removeItem(\'sa-search\');SA.route()">Reinitialiser</button>':''}
         </div>
-        ${reqs.length>0?'<div class="table-container"><table><thead><tr><th>Reference</th><th>Objet</th><th>Etudiant</th><th>Dept</th><th>Categorie</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+reqs.map(r=>'<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td class="font-mono text-primary" style="font-size:13px">'+r.referenceNumber+'</td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.studentName||'')+'</td><td class="text-muted" style="font-size:13px">'+(r.department||'')+'</td><td class="text-secondary" style="font-size:13px">'+(r.categoryName||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.createdAt)+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty-state"><p>Aucune requete trouvee</p></div>'}
+        ${reqs.length>0?'<div class="table-container"><table><thead><tr><th>Reference</th><th>Objet</th><th>Etudiant</th><th>Dept</th><th>Categorie</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+reqs.map(r=>'<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td class="font-mono text-primary" style="font-size:13px">'+r.reference_number+'</td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.student_name||'')+'</td><td class="text-muted" style="font-size:13px">'+(r.department||'')+'</td><td class="text-secondary" style="font-size:13px">'+(r.category_name||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.created_at)+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty-state"><p>Aucune requete trouvee</p></div>'}
       </div>`;
     },
 
-    pgReqDetail(id) {
-      const req=RequestStore.getById(id);
+    async pgReqDetail(id) {
+      const req=await RequestStore.getById(id);
       if(!req) return '<div class="empty-state"><h2>Requete non trouvee</h2><a href="#/requests" class="btn btn-primary mt-2">Retour</a></div>';
       const filesList=(req.fileNames||[]).length>0?'<h4 style="margin-top:16px;font-size:13px;color:var(--text-muted)">Pieces jointes :</h4><div class="file-list">'+req.fileNames.map(f=>'<div class="file-item"><div class="file-item-info"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg> '+Utils.escapeHtml(f)+'</div></div>').join('')+'</div>':'';
       return `
@@ -236,27 +238,27 @@
     deleteCat(id) { if(!confirm('Supprimer ?'))return; localStorage.setItem('iut-cats',JSON.stringify(this.getCats().filter(x=>x.id!==id))); this.addAudit('CATEGORIE','Supprime'); Utils.toast('Supprime','success');this.route(); },
 
     /* ===================== ADMINISTRATEURS ===================== */
-    pgAdmins() {
-      const admins=Auth.getAdmins();
+    async pgAdmins() {
+      const admins=await Auth.getAdmins();
       return `
       <div class="page-header"><h1 class="page-title">Nomination des administrateurs</h1><button class="btn btn-primary" onclick="SA.showAdminForm()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nommer</button></div>
       <div class="alert alert-info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><div><p style="font-size:14px">Les administrateurs se connectent avec leur adresse e-mail uniquement (sans mot de passe).</p><p style="font-size:13px;margin-top:4px">Lien : <a href="../admin/index.html" target="_blank" style="color:var(--primary)">admin/index.html</a></p></div></div>
       <div class="card" style="padding:0">
-        ${admins.length>0?'<div class="table-container"><table><thead><tr><th>Nom</th><th>E-mail</th><th>Telephone</th><th>Departements</th><th>Categories</th><th style="text-align:right">Actions</th></tr></thead><tbody>'+admins.map(a=>'<tr><td><div class="flex items-center gap-2"><div class="user-avatar" style="width:32px;height:32px;font-size:11px">'+(a.firstName?.[0]||'')+(a.lastName?.[0]||'')+'</div><span class="fw-600" style="font-size:14px">'+a.firstName+' '+a.lastName+'</span></div></td><td class="text-primary" style="font-size:13px">'+a.email+'</td><td class="text-muted" style="font-size:13px">'+(a.phone||'-')+'</td><td class="text-muted" style="font-size:12px">'+(a.departmentIds?a.departmentIds.join(', '):'-')+'</td><td class="text-muted" style="font-size:12px">'+(a.categoryIds?a.categoryIds.length+' cat.':'-')+'</td><td class="table-actions"><button class="table-action-btn" onclick="SA.showAdminForm(\''+a.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button class="table-action-btn danger" onclick="SA.deleteAdmin(\''+a.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>').join('')+'</tbody></table></div>':'<div class="empty-state"><p>Aucun administrateur nomme.</p></div>'}
+        ${admins.length>0?'<div class="table-container"><table><thead><tr><th>Nom</th><th>E-mail</th><th>Telephone</th><th>Departements</th><th>Categories</th><th style="text-align:right">Actions</th></tr></thead><tbody>'+admins.map(a=>'<tr><td><div class="flex items-center gap-2"><div class="user-avatar" style="width:32px;height:32px;font-size:11px">'+((a.first_name||'')?.[0]||'')+((a.last_name||'')?.[0]||'')+'</div><span class="fw-600" style="font-size:14px">'+(a.first_name||'')+' '+(a.last_name||'')+'</span></div></td><td class="text-primary" style="font-size:13px">'+a.email+'</td><td class="text-muted" style="font-size:13px">'+(a.phone||'-')+'</td><td class="text-muted" style="font-size:12px">'+(a.departmentIds?a.departmentIds.join(', '):'-')+'</td><td class="text-muted" style="font-size:12px">'+(a.categoryIds?a.categoryIds.length+' cat.':'-')+'</td><td class="table-actions"><button class="table-action-btn" onclick="SA.showAdminForm(\''+a.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button class="table-action-btn danger" onclick="SA.deleteAdmin(\''+a.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>').join('')+'</tbody></table></div>':'<div class="empty-state"><p>Aucun administrateur nomme.</p></div>'}
       </div>`;
     },
     showAdminForm(id) { const a=id?Auth.getAllUsers().find(u=>u.id===id):null; const dc=CONFIG.DEPARTMENTS.map(d=>'<label class="checkbox-label"><input type="checkbox" name="af-d" value="'+d.code+'" '+((a?.departmentIds||[]).includes(d.code)?'checked':'')+'>'+d.code+' - '+d.name+'</label>').join(''); const cc=this.getCats().map(c=>'<label class="checkbox-label"><input type="checkbox" name="af-c" value="'+c.id+'" '+((a?.categoryIds||[]).includes(c.id)?'checked':'')+'>'+c.name+'</label>').join(''); this.modal(a?'Modifier':'Nommer un administrateur',(!a?'<div class="form-group"><label class="form-label">Adresse e-mail (identifiant) *</label><input type="email" class="form-input" id="af-email" placeholder="admin@exemple.com"></div><div class="form-group"><label class="form-label">Mot de passe *</label><input type="password" class="form-input" id="af-pwd" placeholder="Min. 6 caracteres"></div>':'<div class="form-group"><label class="form-label">E-mail</label><input class="form-input" value="'+a.email+'" disabled></div><div class="form-group"><label class="form-label">Nouveau mot de passe (laisser vide pour garder)</label><input type="password" class="form-input" id="af-pwd"></div>')+'<div class="form-row"><div class="form-group"><label class="form-label">Prenom *</label><input class="form-input" id="af-fn" value="'+(a?.firstName||'')+'"></div><div class="form-group"><label class="form-label">Nom *</label><input class="form-input" id="af-ln" value="'+(a?.lastName||'')+'"></div></div><div class="form-group"><label class="form-label">Telephone</label><input class="form-input" id="af-ph" value="'+(a?.phone||'')+'"></div><hr style="border:none;border-top:1px solid var(--border);margin:16px 0"><div class="form-group"><label class="form-label">Departements</label><div style="max-height:140px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:12px">'+dc+'</div></div><div class="form-group"><label class="form-label">Categories</label><div style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:12px">'+cc+'</div></div>','<button class="btn btn-secondary" onclick="SA.closeModal()">Annuler</button><button class="btn btn-primary" onclick="SA.saveAdmin(\''+(id||'')+'\')">Enregistrer</button>',true); },
-    saveAdmin(id) { const fn=document.getElementById('af-fn').value,ln=document.getElementById('af-ln').value,ph=document.getElementById('af-ph').value; const pw=document.getElementById('af-pwd')?.value||''; const di=Array.from(document.querySelectorAll('[name="af-d"]:checked')).map(i=>i.value); const ci=Array.from(document.querySelectorAll('[name="af-c"]:checked')).map(i=>i.value); if(!fn||!ln){Utils.toast('Prenom et nom requis','error');return;} if(id){const updates={firstName:fn,lastName:ln,phone:ph,departmentIds:di,categoryIds:ci};if(pw)updates.password=pw;Auth.updateUser(id,updates);}else{const em=document.getElementById('af-email').value;if(!em){Utils.toast('E-mail requis','error');return;}if(!pw||pw.length<6){Utils.toast('Mot de passe requis (min. 6 car.)','error');return;}const r=Auth.createAdmin({email:em,password:pw,firstName:fn,lastName:ln,phone:ph,departmentIds:di,categoryIds:ci});if(!r.success){Utils.toast(r.message,'error');return;}} this.addAudit('ADMIN',id?'Modifie: '+fn+' '+ln:'Nomme: '+fn+' '+ln); this.closeModal();Utils.toast('Enregistre','success');this.route(); },
-    deleteAdmin(id) { if(!confirm('Retirer ?'))return; Auth.deleteUser(id); this.addAudit('ADMIN','Retire: '+id); Utils.toast('Retire','success');this.route(); },
+    async saveAdmin(id) { const fn=document.getElementById('af-fn').value,ln=document.getElementById('af-ln').value,ph=document.getElementById('af-ph').value; const pw=document.getElementById('af-pwd')?.value||''; const di=Array.from(document.querySelectorAll('[name="af-d"]:checked')).map(i=>i.value); const ci=Array.from(document.querySelectorAll('[name="af-c"]:checked')).map(i=>i.value); if(!fn||!ln){Utils.toast('Prenom et nom requis','error');return;} if(id){const updates={firstName:fn,lastName:ln,phone:ph};if(pw)updates.password=pw;await Auth.updateUser(id,updates);}else{const em=document.getElementById('af-email').value;if(!em){Utils.toast('E-mail requis','error');return;}if(!pw||pw.length<6){Utils.toast('Mot de passe requis (min. 6 car.)','error');return;}const r=await Auth.createAdmin({email:em,password:pw,firstName:fn,lastName:ln,phone:ph});if(!r.success){Utils.toast(r.message,'error');return;}} Auth.addAudit('ADMIN',id?'Modifie: '+fn+' '+ln:'Nomme: '+fn+' '+ln); this.closeModal();Utils.toast('Enregistre','success');this.route(); },
+    async deleteAdmin(id) { if(!confirm('Retirer ?'))return; await Auth.deleteUser(id); this.addAudit('ADMIN','Retire: '+id); Utils.toast('Retire','success');this.route(); },
 
     /* ===================== SUPER ADMINISTRATEURS ===================== */
-    pgSuperAdmins() {
-      const sas=Auth.getAllUsers().filter(u=>u.role==='SUPER_ADMIN');
+    async pgSuperAdmins() {
+      const allU=await Auth.getAllUsers(); const sas=allU.filter(u=>u.role==='SUPER_ADMIN');
       return `
       <div class="page-header"><h1 class="page-title">Gestion des Super Administrateurs</h1><button class="btn btn-primary" onclick="SA.showSAForm()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Ajouter un Super Admin</button></div>
       <div class="alert alert-warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><div><p style="font-size:14px">Les Super Administrateurs ont un acces total a la plateforme. Ils se connectent avec leur e-mail et mot de passe sur cette meme page (superadmin/index.html).</p></div></div>
       <div class="card" style="padding:0"><div class="table-container"><table><thead><tr><th>Nom</th><th>E-mail</th><th>Telephone</th><th>Date de creation</th><th style="text-align:right">Actions</th></tr></thead><tbody>
-        ${sas.map(s=>'<tr><td><div class="flex items-center gap-2"><div class="user-avatar" style="width:32px;height:32px;font-size:11px">'+(s.firstName?.[0]||'')+(s.lastName?.[0]||'')+'</div><span class="fw-600">'+s.firstName+' '+s.lastName+'</span></div></td><td class="text-primary" style="font-size:13px">'+s.email+'</td><td class="text-muted" style="font-size:13px">'+(s.phone||'-')+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(s.createdAt)+'</td><td class="table-actions"><button class="table-action-btn" onclick="SA.showSAForm(\''+s.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></td></tr>').join('')}
+        ${sas.map(s=>'<tr><td><div class="flex items-center gap-2"><div class="user-avatar" style="width:32px;height:32px;font-size:11px">'+((s.first_name||'')?.[0]||'')+((s.last_name||'')?.[0]||'')+'</div><span class="fw-600">'+(s.first_name||'')+' '+(s.last_name||'')+'</span></div></td><td class="text-primary" style="font-size:13px">'+s.email+'</td><td class="text-muted" style="font-size:13px">'+(s.phone||'-')+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(s.createdAt)+'</td><td class="table-actions"><button class="table-action-btn" onclick="SA.showSAForm(\''+s.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></td></tr>').join('')}
       </tbody></table></div></div>`;
     },
     showSAForm(id) {
@@ -266,14 +268,14 @@
         '<div class="form-row"><div class="form-group"><label class="form-label">Prenom *</label><input class="form-input" id="sa-f-fn" value="'+(s?.firstName||'')+'"></div><div class="form-group"><label class="form-label">Nom *</label><input class="form-input" id="sa-f-ln" value="'+(s?.lastName||'')+'"></div></div><div class="form-group"><label class="form-label">Telephone</label><input class="form-input" id="sa-f-ph" value="'+(s?.phone||'')+'"></div>',
         '<button class="btn btn-secondary" onclick="SA.closeModal()">Annuler</button><button class="btn btn-primary" onclick="SA.saveSA(\''+(id||'')+'\')">Enregistrer</button>');
     },
-    saveSA(id) {
+    async saveSA(id) {
       const fn=document.getElementById('sa-f-fn').value,ln=document.getElementById('sa-f-ln').value,ph=document.getElementById('sa-f-ph').value,em=document.getElementById('sa-f-email').value,pw=document.getElementById('sa-f-pwd').value;
       if(!fn||!ln||!em){Utils.toast('Prenom, nom et e-mail requis','error');return;}
       if(id) {
         const updates={firstName:fn,lastName:ln,phone:ph,email:em};
         if(pw) updates.password=pw;
-        Auth.updateUser(id,updates);
-        const cur=Auth.getUser(); if(cur&&cur.id===id) Auth.updateProfile(updates);
+        await Auth.updateUser(id,updates);
+        const cur=Auth.getUser(); if(cur&&cur.id===id) await Auth.updateProfile(updates);
       } else {
         if(!pw||pw.length<8){Utils.toast('Mot de passe requis (min. 8 caracteres)','error');return;}
         const users=Auth.getAllUsers();
@@ -286,7 +288,7 @@
     },
 
     /* ===================== TOUS LES COMPTES ===================== */
-    pgUsers() { const us=Auth.getAllUsers(); const rl={STUDENT:'Etudiant',ADMIN:'Administrateur',SUPER_ADMIN:'Super Admin'}; const rb={STUDENT:'badge-draft',ADMIN:'badge-submitted',SUPER_ADMIN:'badge-reopened'}; return `<div class="page-header"><h1 class="page-title">Tous les comptes (${us.length})</h1></div><div class="card" style="padding:0"><div class="table-container"><table><thead><tr><th>Nom</th><th>E-mail</th><th>Role</th><th>Departement</th><th>Statut</th><th>Date</th></tr></thead><tbody>${us.map(u=>'<tr><td><div class="flex items-center gap-2"><div class="user-avatar" style="width:32px;height:32px;font-size:11px">'+(u.firstName?.[0]||'')+(u.lastName?.[0]||'')+'</div><div><p class="fw-600" style="font-size:14px">'+u.firstName+' '+u.lastName+'</p>'+(u.matricule?'<p class="text-muted" style="font-size:11px">'+u.matricule+'</p>':'')+'</div></div></td><td class="text-secondary" style="font-size:13px">'+u.email+'</td><td><span class="badge '+(rb[u.role]||'badge-draft')+'">'+(rl[u.role]||u.role)+'</span></td><td class="text-muted" style="font-size:13px">'+(u.department||(u.departmentIds?u.departmentIds.join(', '):'-'))+'</td><td><span class="badge '+(u.isActive?'badge-validated':'badge-rejected')+'">'+(u.isActive?'Actif':'Inactif')+'</span></td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(u.createdAt)+'</td></tr>').join('')}</tbody></table></div></div>`; },
+    async pgUsers() { const us=await Auth.getAllUsers(); const rl={STUDENT:'Etudiant',ADMIN:'Administrateur',SUPER_ADMIN:'Super Admin'}; const rb={STUDENT:'badge-draft',ADMIN:'badge-submitted',SUPER_ADMIN:'badge-reopened'}; return `<div class="page-header"><h1 class="page-title">Tous les comptes (${us.length})</h1></div><div class="card" style="padding:0"><div class="table-container"><table><thead><tr><th>Nom</th><th>E-mail</th><th>Role</th><th>Departement</th><th>Statut</th><th>Date</th></tr></thead><tbody>${us.map(u=>'<tr><td><div class="flex items-center gap-2"><div class="user-avatar" style="width:32px;height:32px;font-size:11px">'+((u.first_name||'')?.[0]||'')+((u.last_name||'')?.[0]||'')+'</div><div><p class="fw-600" style="font-size:14px">'+(u.first_name||'')+' '+(u.last_name||'')+'</p>'+(u.matricule?'<p class="text-muted" style="font-size:11px">'+u.matricule+'</p>':'')+'</div></div></td><td class="text-secondary" style="font-size:13px">'+u.email+'</td><td><span class="badge '+(rb[u.role]||'badge-draft')+'">'+(rl[u.role]||u.role)+'</span></td><td class="text-muted" style="font-size:13px">'+(u.department||(u.departmentIds?u.departmentIds.join(', '):'-'))+'</td><td><span class="badge '+(u.isActive?'badge-validated':'badge-rejected')+'">'+(u.isActive?'Actif':'Inactif')+'</span></td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(u.createdAt)+'</td></tr>').join('')}</tbody></table></div></div>`; },
 
     /* ===================== JOURNAL D'AUDIT ===================== */
     pgAudit() {
@@ -299,7 +301,7 @@
     },
 
     /* ===================== NOTIFICATIONS ===================== */
-    pgNotifs() { const u=Auth.getUser(); const ns=NotifStore.getAll(u.id); return `<div class="page-header"><h1 class="page-title">Notifications</h1></div><div class="card" style="padding:0">${ns.length>0?ns.map(n=>'<div style="display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border)"><div style="flex:1"><p class="fw-600" style="font-size:14px">'+n.title+'</p><p class="text-secondary" style="font-size:13px;margin-top:2px">'+n.message+'</p><p class="text-muted" style="font-size:12px;margin-top:4px">'+Utils.timeAgo(n.createdAt)+'</p></div></div>').join(''):'<div class="empty-state"><p>Aucune notification</p></div>'}</div>`; },
+    async pgNotifs() { const u=Auth.getUser(); const ns=await NotifStore.getAll(u.id); return `<div class="page-header"><h1 class="page-title">Notifications</h1></div><div class="card" style="padding:0">${ns.length>0?ns.map(n=>'<div style="display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border)"><div style="flex:1"><p class="fw-600" style="font-size:14px">'+n.title+'</p><p class="text-secondary" style="font-size:13px;margin-top:2px">'+n.message+'</p><p class="text-muted" style="font-size:12px;margin-top:4px">'+Utils.timeAgo(n.createdAt)+'</p></div></div>').join(''):'<div class="empty-state"><p>Aucune notification</p></div>'}</div>`; },
 
     /* ===================== PROFIL ===================== */
     pgProfile() {
@@ -308,9 +310,9 @@
       <div style="max-width:640px">
         <h1 class="page-title mb-3">Mon profil</h1>
         <div class="card mb-3">
-          <div class="flex items-center gap-3 mb-3"><div class="user-avatar" style="width:56px;height:56px;font-size:20px">${u.firstName?.[0]}${u.lastName?.[0]}</div><div><p class="fw-600" style="font-size:18px">${u.firstName} ${u.lastName}</p><p class="text-muted" style="font-size:13px">${u.email}</p><p class="badge badge-reopened mt-1">Super Administrateur</p></div></div>
+          <div class="flex items-center gap-3 mb-3"><div class="user-avatar" style="width:56px;height:56px;font-size:20px">${(u.first_name||'')?.[0]}${(u.last_name||'')?.[0]}</div><div><p class="fw-600" style="font-size:18px">${(u.first_name||'')} ${(u.last_name||'')}</p><p class="text-muted" style="font-size:13px">${u.email}</p><p class="badge badge-reopened mt-1">Super Administrateur</p></div></div>
           <form onsubmit="return SA.updateProfile(event)">
-            <div class="form-row"><div class="form-group"><label class="form-label">Prenom</label><input class="form-input" id="sp-fn" value="${u.firstName}"></div><div class="form-group"><label class="form-label">Nom</label><input class="form-input" id="sp-ln" value="${u.lastName}"></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Prenom</label><input class="form-input" id="sp-fn" value="${(u.first_name||'')}"></div><div class="form-group"><label class="form-label">Nom</label><input class="form-input" id="sp-ln" value="${(u.last_name||'')}"></div></div>
             <div class="form-group"><label class="form-label">E-mail</label><input type="email" class="form-input" id="sp-email" value="${u.email}"></div>
             <div class="form-group"><label class="form-label">Telephone</label><input class="form-input" id="sp-phone" value="${u.phone||''}"></div>
             <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
@@ -329,7 +331,7 @@
         </div>
       </div>`;
     },
-    updateProfile(e) { e.preventDefault(); const up={firstName:document.getElementById('sp-fn').value,lastName:document.getElementById('sp-ln').value,email:document.getElementById('sp-email').value,phone:document.getElementById('sp-phone').value}; const pw=document.getElementById('sp-pwd').value; if(pw)up.password=pw; const u=Auth.getUser(); Auth.updateUser(u.id,up); Auth.updateProfile(up); this.addAudit('PROFIL','Profil Super Admin modifie'); Utils.toast('Profil mis a jour','success'); this.route(); return false; },
+    async updateProfile(e) { e.preventDefault(); const up={first_name:document.getElementById('sp-fn').value,last_name:document.getElementById('sp-ln').value,email:document.getElementById('sp-email').value,phone:document.getElementById('sp-phone').value}; const pw=document.getElementById('sp-pwd').value; if(pw)up.password=pw; const u=Auth.getUser(); await Auth.updateUser(u.id,up); await Auth.updateProfile(up); this.addAudit('PROFIL','Profil Super Admin modifie'); Utils.toast('Profil mis a jour','success'); this.route(); return false; },
   };
 
   document.addEventListener('DOMContentLoaded', () => SA.init());
