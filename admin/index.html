@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="IUTRequests - Espace Administrateur">
+  <title>IUTRequests - Administration</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231565C0'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='14' fill='white'%3EIUT%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <link rel="stylesheet" href="../assets/css/style.css?v=6">
+</head>
+<body>
+  <div id="app"><div class="loading-page" style="min-height:100vh"><div class="spinner"></div><p>Chargement...</p></div></div>
+  <script src="../assets/js/config.js?v=6"></script>
+  <script src="../assets/js/i18n.js?v=6"></script>
+  <script src="../assets/js/auth.js?v=6"></script>
+  <script>
+  /* ============================================
+     ESPACE ADMINISTRATEUR - IUTRequests
+     ============================================ */
+  const Admin = {
+    init() {
+      document.documentElement.setAttribute('data-theme', localStorage.getItem('iut-theme') || 'light');
+      window.addEventListener('hashchange', () => this.route());
+      this.route();
+    },
+
+    route() {
+      const hash = location.hash.slice(1) || '/';
+      const user = Auth.getUser();
+      if (hash === '/login' || !user || user.role !== 'ADMIN') {
+        if (hash !== '/login' && (!user || user.role !== 'ADMIN')) { this.showLogin(); return; }
+        if (hash === '/login') { this.showLogin(); return; }
+      }
+      const path = hash.split('?')[0];
+      let content = '';
+      switch (path) {
+        case '/': case '/dashboard': content = this.pageDashboard(); break;
+        case '/requests': content = this.pageRequests(); break;
+        case '/notifications': content = this.pageNotifications(); break;
+        case '/profile': content = this.pageProfile(); break;
+        default:
+          if (path.startsWith('/requests/')) content = this.pageRequestDetail(path.split('/')[2]);
+          else content = '<div class="empty-state mt-4"><h2>Page non trouvee</h2></div>';
+      }
+      document.getElementById('app').innerHTML = this.layout(content, path);
+      window.scrollTo(0, 0);
+    },
+
+    layout(content, path) {
+      const user = Auth.getUser();
+      const unread = NotifStore.getUnreadCount(user.id);
+      return `
+      <header class="header"><div class="header-inner">
+        <div class="header-left">
+          <button class="header-btn mobile-menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+          <a class="header-logo" href="#/dashboard"><img src="../assets/images/logo.png" alt="IUT" onerror="this.style.display='none'"><span class="header-logo-text">IUTRequests <span style="font-size:12px;opacity:0.7;font-weight:400">Admin</span></span></a>
+        </div>
+        <div class="header-right">
+          <button class="header-btn" onclick="Admin.toggleTheme()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${document.documentElement.getAttribute('data-theme')==='dark'?'<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>':'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'}</svg></button>
+          <a href="#/notifications" class="header-btn">${unread>0?'<span class="header-badge-count">'+unread+'</span>':''}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></a>
+          <div class="user-menu"><button class="user-menu-trigger" onclick="this.nextElementSibling.classList.toggle('hidden')"><div class="user-avatar">${user.firstName?.[0]||''}${user.lastName?.[0]||''}</div><span class="user-name">${user.firstName} ${user.lastName}</span></button>
+            <div class="dropdown hidden">
+              <div class="dropdown-header"><div class="dropdown-header-name">${user.firstName} ${user.lastName}</div><div class="dropdown-header-email">${user.email}</div></div>
+              <a href="#/profile" class="dropdown-item" onclick="document.querySelectorAll('.dropdown').forEach(d=>d.classList.add('hidden'))"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Profil</a>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item dropdown-item-danger" onclick="Auth.logout();location.hash='#/login'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Deconnexion</button>
+            </div>
+          </div>
+        </div>
+      </div></header>
+      <aside class="sidebar" id="sidebar"><nav class="sidebar-nav">
+        ${[
+          {p:'/dashboard',l:'Tableau de bord',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>'},
+          {p:'/requests',l:'Requetes assignees',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'},
+          {p:'/notifications',l:'Notifications',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>'},
+          {p:'/profile',l:'Profil',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'},
+        ].map(l => '<a href="#'+l.p+'" class="sidebar-link '+(path===l.p||(l.p!=='/dashboard'&&path.startsWith(l.p))?'active':'')+'" onclick="document.getElementById(\'sidebar\').classList.remove(\'open\')">'+l.i+' '+l.l+'</a>').join('')}
+      </nav></aside>
+      <main class="main-content main-with-sidebar">${content}</main>
+      <div id="toast-container" class="toast-container"></div>
+      <div id="modal-root"></div>`;
+    },
+
+    showLogin() {
+      document.getElementById('app').innerHTML = `
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg-alt);padding:20px">
+        <div style="width:100%;max-width:440px">
+          <div style="text-align:center;margin-bottom:28px">
+            <div style="width:64px;height:64px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin:0 auto 16px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+            <h1 style="font-size:1.5rem;font-family:Poppins,sans-serif;font-weight:700">Espace Administrateur</h1>
+            <p style="color:var(--text-secondary);font-size:14px;margin-top:4px">Connectez-vous avec vos identifiants administrateur</p>
+          </div>
+          <div class="card">
+            <form onsubmit="return Admin.handleLogin(event)">
+              <div class="form-group"><label class="form-label">Adresse e-mail</label><input type="email" class="form-input" id="admin-email" required placeholder="votre.email@exemple.com"></div>
+              <div class="form-group"><label class="form-label">Mot de passe</label><input type="password" class="form-input" id="admin-password" required placeholder="Votre mot de passe"></div>
+              <button type="submit" class="btn btn-primary btn-lg" style="width:100%">Se connecter</button>
+            </form>
+          </div>
+          <p style="text-align:center;font-size:13px;color:var(--text-muted);margin-top:16px"><a href="../index.html" style="color:var(--primary)">Retour au site principal</a></p>
+        </div>
+      </div>
+      <div id="toast-container" class="toast-container"></div>`;
+    },
+
+    handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('admin-email').value;
+      const password = document.getElementById('admin-password').value;
+      const result = Auth.loginAdmin(email, password);
+      if (result.success) { location.hash = '#/dashboard'; this.route(); }
+      else { Utils.toast(result.message, 'error'); }
+      return false;
+    },
+
+    toggleTheme() {
+      const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem('iut-theme', t);
+      this.route();
+    },
+
+    /* --- PAGES --- */
+    pageDashboard() {
+      const user = Auth.getUser();
+      const allReqs = RequestStore.getAll();
+      const myReqs = allReqs; // Admin voit toutes les requetes de ses departements
+      const pending = myReqs.filter(r => ['SUBMITTED','RECEIVED'].includes(r.status)).length;
+      const inProgress = myReqs.filter(r => r.status === 'IN_PROGRESS').length;
+      const validated = myReqs.filter(r => ['VALIDATED','PROCESSED'].includes(r.status)).length;
+      const rejected = myReqs.filter(r => r.status === 'REJECTED').length;
+      const oldest = myReqs.filter(r => ['SUBMITTED','RECEIVED','IN_PROGRESS'].includes(r.status)).sort((a,b) => new Date(a.createdAt)-new Date(b.createdAt)).slice(0, 8);
+
+      return `
+      <div class="page-header"><div><h1 class="page-title">Bienvenue, ${user.firstName}</h1><p class="page-subtitle">Administrateur${user.departmentIds ? ' - ' + user.departmentIds.join(', ') : ''}</p></div></div>
+      <div class="stats-grid mb-3">
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--primary-light);color:var(--primary)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div><div class="stat-value">${myReqs.length}</div><div class="stat-label">Total requetes</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--yellow-light);color:var(--yellow-dark)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="stat-value">${pending}</div><div class="stat-label">En attente</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:#E3F2FD;color:#1565C0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div><div class="stat-value">${inProgress}</div><div class="stat-label">En cours</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--green-light);color:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><div class="stat-value">${validated}</div><div class="stat-label">Validees</div></div></div>
+      </div>
+      ${oldest.length > 0 ? `
+      <div class="card">
+        <div class="card-header"><span class="card-title" style="display:flex;align-items:center;gap:8px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Requetes en attente les plus anciennes</span><a href="#/requests" class="btn btn-ghost btn-sm">Voir tout</a></div>
+        <div class="table-container"><table><thead><tr><th>Reference</th><th>Objet</th><th>Etudiant</th><th>Categorie</th><th>Statut</th><th>Date</th></tr></thead><tbody>
+          ${oldest.map(r => '<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td class="font-mono text-primary" style="font-size:13px">'+r.referenceNumber+'</td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.studentName||'')+'</td><td class="text-secondary" style="font-size:13px">'+(r.categoryName||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.createdAt)+'</td></tr>').join('')}
+        </tbody></table></div>
+      </div>` : '<div class="card"><div class="empty-state"><p>Aucune requete en attente.</p></div></div>'}`;
+    },
+
+    pageRequests() {
+      const all = RequestStore.getAll();
+      const search = localStorage.getItem('adm-search') || '';
+      let reqs = search ? all.filter(r => r.referenceNumber.toLowerCase().includes(search.toLowerCase()) || r.title.toLowerCase().includes(search.toLowerCase()) || (r.studentName||'').toLowerCase().includes(search.toLowerCase())) : all;
+      reqs = reqs.slice().reverse();
+      return `
+      <div class="page-header"><h1 class="page-title">Requetes assignees (${all.length})</h1></div>
+      <div class="card">
+        <div class="filters"><div class="search-wrapper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="form-input" placeholder="Rechercher par reference, objet ou etudiant..." value="${Utils.escapeHtml(search)}" oninput="localStorage.setItem('adm-search',this.value);Admin.route()"></div>${search?'<button class="btn btn-ghost btn-sm" onclick="localStorage.removeItem(\'adm-search\');Admin.route()">Reinitialiser</button>':''}</div>
+        ${reqs.length > 0 ? '<div class="table-container"><table><thead><tr><th>Reference</th><th>Objet</th><th>Etudiant</th><th>Categorie</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+reqs.map(r => '<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td class="font-mono text-primary" style="font-size:13px">'+r.referenceNumber+'</td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.studentName||'')+'</td><td class="text-secondary" style="font-size:13px">'+(r.categoryName||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.createdAt)+'</td></tr>').join('')+'</tbody></table></div>' : '<div class="empty-state"><p>Aucune requete trouvee.</p></div>'}
+      </div>`;
+    },
+
+    pageRequestDetail(id) {
+      const req = RequestStore.getById(id);
+      if (!req) return '<div class="empty-state"><h2>Requete non trouvee</h2><a href="#/requests" class="btn btn-primary mt-2">Retour</a></div>';
+      const user = Auth.getUser();
+      if (!req.firstViewedAt) {
+        RequestStore.update(id, { firstViewedAt: new Date().toISOString() });
+        NotifStore.create({ userId: req.studentId, type: 'REQUEST_READ', title: 'Requete consultee', message: 'Votre requete ' + req.referenceNumber + ' a ete consultee par l\'administrateur.', requestId: req.id, requestRef: req.referenceNumber });
+      }
+      const statusOpts = Object.keys(CONFIG.STATUSES).map(s => '<option value="'+s+'">'+CONFIG.STATUSES[s].fr+'</option>').join('');
+      const admins = Auth.getAdmins().filter(a => a.id !== user.id);
+      const adminOpts = admins.map(a => '<option value="'+a.id+'">'+a.firstName+' '+a.lastName+' ('+a.email+')</option>').join('');
+
+      return `
+      <div class="flex items-center gap-2 mb-3">
+        <a href="#/requests" class="btn btn-ghost btn-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></a>
+        <div class="flex-1"><h1 class="page-title" style="font-size:1.25rem">${Utils.escapeHtml(req.title)}</h1><p class="text-muted font-mono" style="font-size:13px">${req.referenceNumber}</p></div>
+        ${Utils.statusBadge(req.status)}
+        <button class="btn btn-ghost btn-sm" onclick="window.print()">Imprimer</button>
+        <button class="btn btn-danger btn-sm" onclick="if(confirm('Supprimer cette requete ?')){RequestStore.delete('${id}');Utils.toast('Supprimee','success');location.hash='#/requests'}">Supprimer</button>
+      </div>
+      <div class="grid" style="grid-template-columns:2fr 1fr;gap:24px">
+        <div>
+          <div class="card mb-3"><h3 class="card-title mb-2">Description</h3><p style="white-space:pre-wrap;font-size:14px;color:var(--text-secondary)">${Utils.escapeHtml(req.description)}</p>${(req.fileNames||[]).length>0?'<h4 style="margin-top:16px;font-size:13px;color:var(--text-muted)">Pieces jointes de l\'etudiant :</h4><div class="file-list">'+req.fileNames.map(f=>'<div class="file-item"><div class="file-item-info"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg> '+Utils.escapeHtml(f)+'</div></div>').join('')+'</div>':''}</div>
+          <div class="card mb-3">
+            <h3 class="card-title mb-2">Messages</h3>
+            <div class="messages-container">${(req.messages||[]).map(m => '<div class="message '+(m.senderRole==='ADMIN'||m.senderId===user.id?'message-sent':'message-received')+'"><div class="message-bubble"><div class="message-sender">'+Utils.escapeHtml(m.senderName)+'</div>'+Utils.escapeHtml(m.content)+'<div class="message-meta">'+Utils.formatDateTime(m.createdAt)+'</div></div></div>').join('')||'<p class="text-center text-muted" style="padding:20px;font-size:14px">Aucun message</p>'}</div>
+            <div class="message-input-bar"><input type="text" class="form-input" id="msg-input" placeholder="Ecrire un message..." onkeydown="if(event.key==='Enter')Admin.sendMsg('${id}')"><button class="btn btn-primary" onclick="Admin.sendMsg('${id}')">Envoyer</button></div>
+          </div>
+        </div>
+        <div>
+          <div class="card mb-3">
+            <h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Etudiant</h4>
+            <p class="fw-600" style="font-size:16px">${req.studentName||'-'}</p>
+            <p style="font-size:13px;color:var(--primary);font-weight:600;margin-top:4px">Matricule : ${req.studentMatricule||'Non renseigne'}</p>
+            <p class="text-muted" style="font-size:13px">${req.studentEmail||''}</p>
+            <p class="text-muted" style="font-size:13px">${req.studentPhone||''}</p>
+            <p class="text-muted" style="font-size:13px">${req.department||''} ${req.program?' - '+req.program:''}</p>
+            ${['VALIDATED','PROCESSED'].includes(req.status)?`<div class="contact-grid mt-2">
+              <a href="tel:${req.studentPhone||''}" class="contact-btn contact-phone"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07"/></svg> Appeler</a>
+              <a href="https://wa.me/${(req.studentPhone||'').replace(/\\D/g,'')}" target="_blank" class="contact-btn contact-whatsapp"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7"/></svg> WhatsApp</a>
+              <a href="mailto:${req.studentEmail||''}" class="contact-btn contact-email"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4"/><polyline points="22,6 12,13 2,6"/></svg> E-mail</a>
+              <button class="contact-btn contact-rdv"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/></svg> RDV</button>
+            </div>`:''}
+          </div>
+          <div class="card mb-3">
+            <h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Actions</h4>
+            <div class="flex flex-col gap-1">
+              <div class="form-group"><label class="form-label">Changer le statut</label><select class="form-select" id="status-select">${statusOpts}</select></div>
+              <div class="form-group"><label class="form-label">Motif (optionnel)</label><input type="text" class="form-input" id="status-reason" placeholder="Motif..."></div>
+              <button class="btn btn-primary btn-sm" onclick="Admin.changeStatus('${id}')">Appliquer</button>
+              ${admins.length>0?`<hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
+              <div class="form-group"><label class="form-label">Transferer a un autre administrateur</label><select class="form-select" id="transfer-select"><option value="">-- Selectionnez --</option>${adminOpts}</select></div>
+              <button class="btn btn-outline btn-sm" onclick="Admin.transferReq('${id}')">Transferer la requete</button>`:''}
+              <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
+              <div class="form-group"><label class="form-label">Nommer un nouvel admin pour toutes vos requetes</label><input type="email" class="form-input" id="delegate-email" placeholder="adresse@email.com"><input type="password" class="form-input mt-1" id="delegate-pwd" placeholder="Mot de passe pour ce nouvel admin"><p class="form-hint">Cette personne aura acces a toutes les requetes.</p></div>
+              <button class="btn btn-outline btn-sm" onclick="Admin.delegateToNew()">Nommer comme administrateur</button>
+            </div>
+          </div>
+          <div class="card mb-3">
+            <h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Informations</h4>
+            <div style="font-size:14px">
+              <div class="flex justify-between mb-1"><span class="text-muted">Categorie</span><span>${req.categoryName||'-'}</span></div>
+              <div class="flex justify-between mb-1"><span class="text-muted">Departement</span><span>${req.department||'-'}</span></div>
+              <div class="flex justify-between mb-1"><span class="text-muted">Filiere</span><span>${req.program||'-'}</span></div>
+              <div class="flex justify-between mb-1"><span class="text-muted">Creee le</span><span style="font-size:12px">${Utils.formatDateTime(req.createdAt)}</span></div>
+              <div class="flex justify-between mb-1"><span class="text-muted">Relances</span><span>${req.reminderCount||0}</span></div>
+            </div>
+          </div>
+          ${(req.statusHistory||[]).length>0?`<div class="card"><h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Historique</h4><div class="timeline">${req.statusHistory.map(h=>'<div class="timeline-item"><div class="timeline-content">'+Utils.statusBadge(h.status)+(h.reason?'<p style="font-size:12px;color:var(--text-muted);margin-top:4px">'+Utils.escapeHtml(h.reason)+'</p>':'')+'<p class="timeline-date">'+Utils.escapeHtml(h.changedBy)+' - '+Utils.formatDateTime(h.date)+'</p></div></div>').join('')}</div></div>`:''}
+        </div>
+      </div>`;
+    },
+
+    sendMsg(id) {
+      const input = document.getElementById('msg-input');
+      if (!input || !input.value.trim()) return;
+      const user = Auth.getUser();
+      RequestStore.addMessage(id, user.id, user.firstName+' '+user.lastName, 'ADMIN', input.value.trim());
+      this.route();
+    },
+
+    changeStatus(id) {
+      const status = document.getElementById('status-select').value;
+      const reason = document.getElementById('status-reason').value;
+      const user = Auth.getUser();
+      RequestStore.updateStatus(id, status, reason, user.firstName+' '+user.lastName);
+      Utils.toast('Statut mis a jour', 'success');
+      this.route();
+    },
+
+    transferReq(id) {
+      const adminId = document.getElementById('transfer-select').value;
+      if (!adminId) { Utils.toast('Selectionnez un administrateur', 'error'); return; }
+      const admin = Auth.getAllUsers().find(u => u.id === adminId);
+      NotifStore.create({ userId: adminId, type: 'REQUEST_TRANSFERRED', title: 'Requete transferee', message: 'La requete ' + (RequestStore.getById(id)?.referenceNumber||'') + ' vous a ete transferee par un administrateur.', requestId: id, requestRef: RequestStore.getById(id)?.referenceNumber });
+      Utils.toast('Requete transferee a ' + (admin?.firstName||'') + ' ' + (admin?.lastName||''), 'success');
+      this.route();
+    },
+
+    delegateToNew() {
+      const email = document.getElementById('delegate-email').value;
+      const pwd = document.getElementById('delegate-pwd').value;
+      if (!email) { Utils.toast('Entrez une adresse e-mail', 'error'); return; }
+      if (!pwd || pwd.length < 6) { Utils.toast('Mot de passe requis (min. 6 caracteres)', 'error'); return; }
+      const users = Auth.getAllUsers();
+      let admin = users.find(u => u.email === email);
+      if (admin && admin.role === 'ADMIN') { Utils.toast('Cette personne est deja administrateur', 'error'); return; }
+      if (admin && admin.role === 'STUDENT') {
+        Auth.updateUser(admin.id, { role: 'ADMIN', password: pwd });
+        Utils.toast(email + ' a ete promu(e) administrateur', 'success');
+      } else if (!admin) {
+        const name = prompt('Entrez le nom complet de cette personne (Prenom Nom) :');
+        if (!name) return;
+        const parts = name.split(' ');
+        const currentUser = Auth.getUser();
+        const result = Auth.createAdmin({ email: email, password: pwd, firstName: parts[0] || '', lastName: parts.slice(1).join(' ') || '', phone: '', departmentIds: currentUser?.departmentIds || [], categoryIds: currentUser?.categoryIds || [] });
+        if (!result.success) { Utils.toast(result.message, 'error'); return; }
+        Utils.toast(email + ' a ete nomme(e) administrateur avec acces a toutes les requetes', 'success');
+      }
+      this.route();
+    },
+
+    pageNotifications() {
+      const user = Auth.getUser();
+      const notifs = NotifStore.getAll(user.id);
+      const unread = notifs.filter(n => !n.isRead).length;
+      return `
+      <div class="page-header"><div><h1 class="page-title">Notifications</h1>${unread>0?'<p class="page-subtitle">'+unread+' non lues</p>':''}</div>${unread>0?'<button class="btn btn-outline btn-sm" onclick="NotifStore.markAllAsRead(\''+user.id+'\');Admin.route()">Tout marquer comme lu</button>':''}</div>
+      <div class="card" style="padding:0">
+        ${notifs.length>0?notifs.map(n=>'<div style="display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);'+(n.isRead?'':'background:rgba(21,101,192,0.04)')+';cursor:pointer" onclick="NotifStore.markAsRead(\''+n.id+'\');'+(n.requestId?'location.hash=\'#/requests/'+n.requestId+'\'':'Admin.route()')+'"><div style="width:8px;height:8px;border-radius:50%;margin-top:6px;flex-shrink:0;background:'+(n.isRead?'transparent':'var(--primary)')+'"></div><div style="flex:1"><p class="fw-600" style="font-size:14px">'+n.title+'</p><p class="text-secondary" style="font-size:13px;margin-top:2px">'+n.message+'</p><p class="text-muted" style="font-size:12px;margin-top:4px">'+Utils.timeAgo(n.createdAt)+'</p></div></div>').join(''):'<div class="empty-state"><p>Aucune notification</p></div>'}
+      </div>`;
+    },
+
+    pageProfile() {
+      const user = Auth.getUser();
+      return `
+      <div style="max-width:640px">
+        <h1 class="page-title mb-3">Mon profil</h1>
+        <div class="card">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="user-avatar" style="width:56px;height:56px;font-size:20px">${user.firstName?.[0]}${user.lastName?.[0]}</div>
+            <div><p class="fw-600" style="font-size:18px">${user.firstName} ${user.lastName}</p><p class="text-muted" style="font-size:13px">${user.email}</p><p class="text-muted" style="font-size:13px">Administrateur</p></div>
+          </div>
+          <form onsubmit="return Admin.updateProfile(event)">
+            <div class="form-row"><div class="form-group"><label class="form-label">Prenom</label><input type="text" class="form-input" id="p-fn" value="${user.firstName}"></div><div class="form-group"><label class="form-label">Nom</label><input type="text" class="form-input" id="p-ln" value="${user.lastName}"></div></div>
+            <div class="form-group"><label class="form-label">Telephone</label><input type="tel" class="form-input" id="p-phone" value="${user.phone||''}"></div>
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+          </form>
+        </div>
+      </div>`;
+    },
+
+    updateProfile(e) {
+      e.preventDefault();
+      Auth.updateProfile({ firstName: document.getElementById('p-fn').value, lastName: document.getElementById('p-ln').value, phone: document.getElementById('p-phone').value });
+      Utils.toast('Profil mis a jour', 'success');
+      this.route();
+      return false;
+    },
+  };
+
+  document.addEventListener('DOMContentLoaded', () => Admin.init());
+  </script>
+</body>
+</html>

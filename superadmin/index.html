@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="IUTRequests - Super Administration">
+  <title>IUTRequests - Super Administration</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230D47A1'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='14' fill='white'%3ESA%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <link rel="stylesheet" href="../assets/css/style.css?v=6">
+</head>
+<body>
+  <div id="app"><div class="loading-page" style="min-height:100vh"><div class="spinner"></div><p>Chargement...</p></div></div>
+  <script src="../assets/js/config.js?v=6"></script>
+  <script src="../assets/js/i18n.js?v=6"></script>
+  <script src="../assets/js/auth.js?v=6"></script>
+  <script>
+  const SA = {
+    init() {
+      document.documentElement.setAttribute('data-theme', localStorage.getItem('iut-theme') || 'light');
+      window.addEventListener('hashchange', () => this.route());
+      this.route();
+    },
+
+    route() {
+      const hash = location.hash.slice(1) || '/';
+      const user = Auth.getUser();
+      if (hash === '/login' || !user || user.role !== 'SUPER_ADMIN') {
+        if (hash !== '/login' && (!user || user.role !== 'SUPER_ADMIN')) { this.showLogin(); return; }
+        if (hash === '/login') { this.showLogin(); return; }
+      }
+      const path = hash.split('?')[0];
+      let c = '';
+      switch (path) {
+        case '/': case '/dashboard': c = this.pgDash(); break;
+        case '/requests': c = this.pgReqs(); break;
+        case '/departments': c = this.pgDepts(); break;
+        case '/programs': c = this.pgProgs(); break;
+        case '/categories': c = this.pgCats(); break;
+        case '/admins': c = this.pgAdmins(); break;
+        case '/superadmins': c = this.pgSuperAdmins(); break;
+        case '/users': c = this.pgUsers(); break;
+        case '/audit': c = this.pgAudit(); break;
+        case '/notifications': c = this.pgNotifs(); break;
+        case '/profile': c = this.pgProfile(); break;
+        default:
+          if (path.startsWith('/requests/')) c = this.pgReqDetail(path.split('/')[2]);
+          else c = '<div class="empty-state mt-4"><h2>Page non trouvee</h2></div>';
+      }
+      document.getElementById('app').innerHTML = this.layout(c, path);
+      window.scrollTo(0, 0);
+    },
+
+    layout(content, path) {
+      const user = Auth.getUser();
+      const unread = NotifStore.getUnreadCount(user.id);
+      const links = [
+        {p:'/dashboard',l:'Tableau de bord',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>'},
+        {p:'/requests',l:'Toutes les requetes',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>'},
+        {s:'Administration'},
+        {p:'/departments',l:'Departements',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>'},
+        {p:'/programs',l:'Filieres',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>'},
+        {p:'/categories',l:'Categories',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'},
+        {p:'/admins',l:'Administrateurs',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'},
+        {p:'/superadmins',l:'Super Admins',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>'},
+        {p:'/users',l:'Tous les comptes',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>'},
+        {p:'/audit',l:'Journal d\'audit',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>'},
+        {s:'Personnel'},
+        {p:'/notifications',l:'Notifications',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>'},
+        {p:'/profile',l:'Mon profil',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'},
+      ];
+      return `
+      <header class="header"><div class="header-inner">
+        <div class="header-left">
+          <button class="header-btn mobile-menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+          <a class="header-logo" href="#/dashboard"><img src="../assets/images/logo.png" alt="IUT" onerror="this.style.display='none'"><span class="header-logo-text">IUTRequests <span style="font-size:11px;opacity:0.8;font-weight:400;background:var(--primary);padding:2px 8px;border-radius:4px;margin-left:4px">Super Admin</span></span></a>
+        </div>
+        <div class="header-right">
+          <button class="header-btn" onclick="SA.toggleTheme()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${document.documentElement.getAttribute('data-theme')==='dark'?'<circle cx="12" cy="12" r="5"/>':'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'}</svg></button>
+          <a href="#/notifications" class="header-btn">${unread>0?'<span class="header-badge-count">'+unread+'</span>':''}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg></a>
+          <div class="user-menu"><button class="user-menu-trigger" onclick="this.nextElementSibling.classList.toggle('hidden')"><div class="user-avatar">${user.firstName?.[0]||'S'}${user.lastName?.[0]||'A'}</div><span class="user-name">${user.firstName}</span></button>
+            <div class="dropdown hidden"><div class="dropdown-header"><div class="dropdown-header-name">${user.firstName} ${user.lastName}</div><div class="dropdown-header-email">${user.email}</div></div><a href="#/profile" class="dropdown-item" onclick="document.querySelectorAll('.dropdown').forEach(d=>d.classList.add('hidden'))">Profil</a><div class="dropdown-divider"></div><button class="dropdown-item dropdown-item-danger" onclick="Auth.logout();location.hash='#/login'">Deconnexion</button></div>
+          </div>
+        </div>
+      </div></header>
+      <aside class="sidebar" id="sidebar"><nav class="sidebar-nav">
+        ${links.map(l=>{if(l.s)return '<div class="sidebar-section">'+l.s+'</div>';const a=path===l.p||(l.p!=='/dashboard'&&path.startsWith(l.p));return '<a href="#'+l.p+'" class="sidebar-link '+(a?'active':'')+'" onclick="document.getElementById(\'sidebar\').classList.remove(\'open\')">'+l.i+' '+l.l+'</a>'}).join('')}
+      </nav></aside>
+      <main class="main-content main-with-sidebar">${content}</main>
+      <div id="toast-container" class="toast-container"></div><div id="modal-root"></div>`;
+    },
+
+    showLogin() {
+      document.getElementById('app').innerHTML = `
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg-alt);padding:20px">
+        <div style="width:100%;max-width:440px">
+          <div style="text-align:center;margin-bottom:28px">
+            <div style="width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,#0D47A1,#1565C0);display:flex;align-items:center;justify-content:center;margin:0 auto 16px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+            <h1 style="font-size:1.5rem;font-family:Poppins,sans-serif;font-weight:700">Super Administration</h1>
+            <p style="color:var(--text-secondary);font-size:14px;margin-top:4px">Acces reserve au Super Administrateur</p>
+          </div>
+          <div class="card">
+            <form onsubmit="return SA.handleLogin(event)">
+              <div class="form-group"><label class="form-label">Adresse e-mail</label><input type="email" class="form-input" id="sa-email" required placeholder="votre@email.com"></div>
+              <div class="form-group"><label class="form-label">Mot de passe</label><input type="password" class="form-input" id="sa-password" required></div>
+              <button type="submit" class="btn btn-primary btn-lg" style="width:100%">Connexion</button>
+            </form>
+          </div>
+          <p style="text-align:center;font-size:13px;color:var(--text-muted);margin-top:16px"><a href="../index.html" style="color:var(--primary)">Retour au site principal</a></p>
+        </div>
+      </div><div id="toast-container" class="toast-container"></div>`;
+    },
+
+    handleLogin(e) {
+      e.preventDefault();
+      const r = Auth.loginSuperAdmin(document.getElementById('sa-email').value, document.getElementById('sa-password').value);
+      if (r.success) { SA.addAudit('CONNEXION','Super Admin connecte'); location.hash='#/dashboard'; this.route(); }
+      else Utils.toast(r.message,'error');
+      return false;
+    },
+
+    toggleTheme() { const t=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme',t); localStorage.setItem('iut-theme',t); this.route(); },
+
+    modal(title,body,footer,lg) {
+      document.getElementById('modal-root').innerHTML='<div class="modal-overlay" onclick="if(event.target===this)document.getElementById(\'modal-root\').innerHTML=\'\'"><div class="modal '+(lg?'modal-lg':'')+'"><div class="modal-header"><span class="modal-title">'+title+'</span><button class="modal-close" onclick="document.getElementById(\'modal-root\').innerHTML=\'\'"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class="modal-body">'+body+'</div><div class="modal-footer">'+footer+'</div></div></div>';
+    },
+    closeModal() { document.getElementById('modal-root').innerHTML=''; },
+
+    addAudit(action, details) {
+      const logs = JSON.parse(localStorage.getItem('iut-audit')||'[]');
+      const u = Auth.getUser();
+      logs.unshift({ id:'log-'+Date.now(), date:new Date().toISOString(), user:(u?u.firstName+' '+u.lastName:'Systeme'), userEmail:u?.email||'', action:action, details:details });
+      if (logs.length > 500) logs.length = 500;
+      localStorage.setItem('iut-audit', JSON.stringify(logs));
+    },
+
+    getDepts() { let d=JSON.parse(localStorage.getItem('iut-depts')||'null'); if(!d){d=CONFIG.DEPARTMENTS.map((x,i)=>({...x,id:'dept-'+i,headName:''}));localStorage.setItem('iut-depts',JSON.stringify(d));} return d; },
+    getProgs() { let p=JSON.parse(localStorage.getItem('iut-progs')||'null'); if(!p){p=[];Object.entries(CONFIG.PROGRAMS).forEach(([dept,ps])=>{ps.forEach(x=>p.push({...x,dept,id:'prog-'+p.length,headName:''}))});localStorage.setItem('iut-progs',JSON.stringify(p));} return p; },
+    getCats() { let c=JSON.parse(localStorage.getItem('iut-cats')||'null'); if(!c){c=CONFIG.CATEGORIES;localStorage.setItem('iut-cats',JSON.stringify(c));} return c; },
+
+    /* ===================== DASHBOARD ===================== */
+    pgDash() {
+      const reqs=RequestStore.getAll(), students=Auth.getAllUsers().filter(u=>u.role==='STUDENT').length, admins=Auth.getAllUsers().filter(u=>u.role==='ADMIN').length;
+      const pending=reqs.filter(r=>['SUBMITTED','RECEIVED'].includes(r.status)).length;
+      const byStatus={}; reqs.forEach(r=>{byStatus[r.status]=(byStatus[r.status]||0)+1;});
+      const byCat={}; reqs.forEach(r=>{const n=r.categoryName||'Autre';byCat[n]=(byCat[n]||0)+1;});
+      const oldest=reqs.filter(r=>['SUBMITTED','RECEIVED','IN_PROGRESS'].includes(r.status)).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt)).slice(0,5);
+
+      return `
+      <div class="page-header"><h1 class="page-title">Tableau de bord global</h1></div>
+      <div class="stats-grid mb-3">
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--primary-light);color:var(--primary)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div><div class="stat-value">${reqs.length}</div><div class="stat-label">Total requetes</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--yellow-light);color:var(--yellow-dark)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="stat-value">${pending}</div><div class="stat-label">En attente</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--green-light);color:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div><div class="stat-value">${students}</div><div class="stat-label">Etudiants</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:#F3E5F5;color:#7B1FA2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div><div class="stat-value">${admins}</div><div class="stat-label">Administrateurs</div></div></div>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:16px">
+        <div class="card"><div class="card-header"><span class="card-title">Repartition par statut</span></div>
+          ${Object.keys(byStatus).length>0?Object.entries(byStatus).map(([s,c])=>'<div class="flex items-center justify-between" style="padding:6px 0">'+Utils.statusBadge(s)+'<span class="fw-600">'+c+'</span></div>').join(''):'<p class="text-muted">Aucune donnee</p>'}
+        </div>
+        <div class="card"><div class="card-header"><span class="card-title">Repartition par categorie</span></div>
+          ${Object.keys(byCat).length>0?Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([n,c])=>'<div class="flex items-center justify-between" style="padding:6px 0"><span style="font-size:13px">'+Utils.escapeHtml(n)+'</span><span class="fw-600">'+c+'</span></div>').join(''):'<p class="text-muted">Aucune donnee</p>'}
+        </div>
+      </div>
+      ${oldest.length>0?'<div class="card mt-3"><div class="card-header"><span class="card-title" style="color:var(--yellow-dark)">Requetes en attente les plus anciennes</span><a href="#/requests" class="btn btn-ghost btn-sm">Tout voir</a></div><div class="table-container"><table><thead><tr><th>Reference</th><th>Objet</th><th>Etudiant</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+oldest.map(r=>'<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td class="font-mono text-primary" style="font-size:13px">'+r.referenceNumber+'</td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-muted" style="font-size:13px">'+(r.studentName||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.createdAt)+'</td></tr>').join('')+'</tbody></table></div></div>':''}`;
+    },
+
+    /* ===================== REQUETES + RECHERCHE ===================== */
+    pgReqs() {
+      const all=RequestStore.getAll();
+      const search=localStorage.getItem('sa-search')||'';
+      let reqs=search?all.filter(r=>r.referenceNumber.toLowerCase().includes(search.toLowerCase())||r.title.toLowerCase().includes(search.toLowerCase())||(r.studentName||'').toLowerCase().includes(search.toLowerCase())):all;
+      reqs=reqs.slice().reverse();
+      return `
+      <div class="page-header"><h1 class="page-title">Toutes les requetes (${all.length})</h1></div>
+      <div class="card">
+        <div class="filters">
+          <div class="search-wrapper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="form-input" id="sa-search" placeholder="Rechercher par reference, objet ou etudiant..." value="${Utils.escapeHtml(search)}" oninput="localStorage.setItem('sa-search',this.value);SA.route()"></div>
+          ${search?'<button class="btn btn-ghost btn-sm" onclick="localStorage.removeItem(\'sa-search\');SA.route()">Reinitialiser</button>':''}
+        </div>
+        ${reqs.length>0?'<div class="table-container"><table><thead><tr><th>Reference</th><th>Objet</th><th>Etudiant</th><th>Dept</th><th>Categorie</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+reqs.map(r=>'<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td class="font-mono text-primary" style="font-size:13px">'+r.referenceNumber+'</td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.studentName||'')+'</td><td class="text-muted" style="font-size:13px">'+(r.department||'')+'</td><td class="text-secondary" style="font-size:13px">'+(r.categoryName||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.createdAt)+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty-state"><p>Aucune requete trouvee</p></div>'}
+      </div>`;
+    },
+
+    pgReqDetail(id) {
+      const req=RequestStore.getById(id);
+      if(!req) return '<div class="empty-state"><h2>Requete non trouvee</h2><a href="#/requests" class="btn btn-primary mt-2">Retour</a></div>';
+      const filesList=(req.fileNames||[]).length>0?'<h4 style="margin-top:16px;font-size:13px;color:var(--text-muted)">Pieces jointes :</h4><div class="file-list">'+req.fileNames.map(f=>'<div class="file-item"><div class="file-item-info"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg> '+Utils.escapeHtml(f)+'</div></div>').join('')+'</div>':'';
+      return `
+      <div class="flex items-center gap-2 mb-3"><a href="#/requests" class="btn btn-ghost btn-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></a><div class="flex-1"><h1 class="page-title" style="font-size:1.25rem">${Utils.escapeHtml(req.title)}</h1><p class="text-muted font-mono" style="font-size:13px">${req.referenceNumber}</p></div>${Utils.statusBadge(req.status)}<button class="btn btn-ghost btn-sm" onclick="window.print()">Imprimer</button><button class="btn btn-danger btn-sm" onclick="if(confirm('Supprimer la requete '+${JSON.stringify(req.referenceNumber)}+' ?')){RequestStore.delete('${id}');Utils.toast('Requete supprimee','success');location.hash='#/requests'}">Supprimer</button></div>
+      <div class="card mb-3"><h3 class="card-title mb-2">Description</h3><p style="white-space:pre-wrap;font-size:14px;color:var(--text-secondary)">${Utils.escapeHtml(req.description)}</p>${filesList}</div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:16px">
+        <div class="card"><h4 class="card-title mb-2">Informations</h4><div style="font-size:14px">
+          <div class="flex justify-between mb-1"><span class="text-muted">Etudiant</span><span class="fw-600">${req.studentName||'-'}</span></div>
+          <div class="flex justify-between mb-1"><span class="text-muted">Email</span><span style="font-size:12px">${req.studentEmail||'-'}</span></div>
+          <div class="flex justify-between mb-1"><span class="text-muted">Telephone</span><span>${req.studentPhone||'-'}</span></div>
+          <div class="flex justify-between mb-1"><span class="text-muted">Matricule</span><span>${req.studentMatricule||'-'}</span></div>
+          <div class="flex justify-between mb-1"><span class="text-muted">Departement</span><span>${req.department||'-'}</span></div>
+          <div class="flex justify-between mb-1"><span class="text-muted">Filiere</span><span>${req.program||'-'}</span></div>
+          <div class="flex justify-between mb-1"><span class="text-muted">Categorie</span><span>${req.categoryName||'-'}</span></div>
+          <div class="flex justify-between mb-1"><span class="text-muted">Cree le</span><span style="font-size:12px">${Utils.formatDateTime(req.createdAt)}</span></div>
+          <div class="flex justify-between mb-1"><span class="text-muted">Relances</span><span>${req.reminderCount||0}</span></div>
+        </div></div>
+        <div class="card"><h4 class="card-title mb-2">Historique</h4>${(req.statusHistory||[]).length>0?'<div class="timeline">'+req.statusHistory.map(h=>'<div class="timeline-item"><div class="timeline-content">'+Utils.statusBadge(h.status)+(h.reason?'<p style="font-size:12px;color:var(--text-muted);margin-top:4px">'+Utils.escapeHtml(h.reason)+'</p>':'')+'<p class="timeline-date">'+Utils.escapeHtml(h.changedBy)+' - '+Utils.formatDateTime(h.date)+'</p></div></div>').join('')+'</div>':'<p class="text-muted">Aucun</p>'}</div>
+      </div>
+      ${(req.messages||[]).length>0?'<div class="card mt-3"><h4 class="card-title mb-2">Messages ('+req.messages.length+')</h4>'+req.messages.map(m=>'<div style="padding:8px 0;border-bottom:1px solid var(--border)"><p class="fw-600" style="font-size:13px">'+Utils.escapeHtml(m.senderName)+(m.senderRole==='ADMIN'?' (Admin)':'')+'<span class="text-muted" style="font-weight:400;margin-left:8px;font-size:11px">'+Utils.formatDateTime(m.createdAt)+'</span></p><p style="font-size:14px;margin-top:4px">'+Utils.escapeHtml(m.content)+'</p></div>').join('')+'</div>':''}`;
+    },
+
+    /* ===================== DEPARTEMENTS ===================== */
+    pgDepts() {
+      const depts=this.getDepts();
+      return `
+      <div class="page-header"><h1 class="page-title">Gestion des departements</h1><button class="btn btn-primary" onclick="SA.showDeptForm()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Ajouter</button></div>
+      <div class="card" style="padding:0"><div class="table-container"><table><thead><tr><th>Code</th><th>Nom</th><th>Responsable</th><th>Statut</th><th style="text-align:right">Actions</th></tr></thead><tbody>
+        ${depts.map(d=>'<tr><td class="font-mono fw-600">'+d.code+'</td><td>'+d.name+'</td><td class="text-muted">'+(d.headName||'-')+'</td><td><button class="badge '+(d.active?'badge-validated':'badge-closed')+'" style="cursor:pointer;border:none" onclick="SA.toggleDeptActive(\''+d.id+'\')">'+(d.active?'Actif':'Inactif')+'</button></td><td class="table-actions"><button class="table-action-btn" onclick="SA.showDeptForm(\''+d.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button class="table-action-btn danger" onclick="SA.deleteDept(\''+d.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>').join('')}
+      </tbody></table></div></div>`;
+    },
+    showDeptForm(id) { const d=id?this.getDepts().find(x=>x.id===id):null; this.modal(d?'Modifier':'Nouveau departement','<div class="form-group"><label class="form-label">Nom *</label><input class="form-input" id="df-name" value="'+(d?.name||'')+'"></div><div class="form-group"><label class="form-label">Code (sigle) *</label><input class="form-input" id="df-code" value="'+(d?.code||'')+'"></div><div class="form-group"><label class="form-label">Responsable</label><input class="form-input" id="df-head" value="'+(d?.headName||'')+'"></div><div class="form-group"><label class="checkbox-label"><input type="checkbox" id="df-active" '+(d?.active?'checked':'')+'>Actif</label></div>','<button class="btn btn-secondary" onclick="SA.closeModal()">Annuler</button><button class="btn btn-primary" onclick="SA.saveDept(\''+(id||'')+'\')">Enregistrer</button>'); },
+    saveDept(id) { const ds=this.getDepts(),n=document.getElementById('df-name').value,c=document.getElementById('df-code').value.toUpperCase(),h=document.getElementById('df-head').value,a=document.getElementById('df-active').checked; if(!n||!c){Utils.toast('Champs requis','error');return;} if(id){const i=ds.findIndex(x=>x.id===id);if(i>=0)ds[i]={...ds[i],name:n,code:c,headName:h,active:a};}else ds.push({id:'dept-'+Date.now(),name:n,code:c,headName:h,active:a}); localStorage.setItem('iut-depts',JSON.stringify(ds)); this.addAudit('DEPARTEMENT',id?'Modifie: '+n+' ('+c+')':'Cree: '+n+' ('+c+')'); this.closeModal();Utils.toast('Enregistre','success');this.route(); },
+    toggleDeptActive(id) { const ds=this.getDepts(),d=ds.find(x=>x.id===id); if(d){d.active=!d.active;localStorage.setItem('iut-depts',JSON.stringify(ds));this.addAudit('DEPARTEMENT',(d.active?'Active':'Desactive')+': '+d.name);this.route();} },
+    deleteDept(id) { if(!confirm('Supprimer ?'))return; const ds=this.getDepts().filter(x=>x.id!==id); localStorage.setItem('iut-depts',JSON.stringify(ds)); this.addAudit('DEPARTEMENT','Supprime: '+id); Utils.toast('Supprime','success');this.route(); },
+
+    /* ===================== FILIERES ===================== */
+    pgProgs() { const ps=this.getProgs(); return `<div class="page-header"><h1 class="page-title">Gestion des filieres</h1><button class="btn btn-primary" onclick="SA.showProgForm()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Ajouter</button></div><div class="card" style="padding:0"><div class="table-container"><table><thead><tr><th>Code</th><th>Nom</th><th>Departement</th><th>Responsable</th><th style="text-align:right">Actions</th></tr></thead><tbody>${ps.map(p=>'<tr><td class="font-mono fw-600">'+p.code+'</td><td>'+p.name+'</td><td class="text-muted">'+p.dept+'</td><td class="text-muted">'+(p.headName||'-')+'</td><td class="table-actions"><button class="table-action-btn" onclick="SA.showProgForm(\''+p.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button class="table-action-btn danger" onclick="SA.deleteProg(\''+p.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>').join('')}</tbody></table></div></div>`; },
+    showProgForm(id) { const p=id?this.getProgs().find(x=>x.id===id):null; const dOpts=CONFIG.DEPARTMENTS.map(d=>'<option value="'+d.code+'" '+(p?.dept===d.code?'selected':'')+'>'+d.name+' ('+d.code+')</option>').join(''); this.modal(p?'Modifier':'Nouvelle filiere','<div class="form-group"><label class="form-label">Nom *</label><input class="form-input" id="pf-name" value="'+(p?.name||'')+'"></div><div class="form-group"><label class="form-label">Code *</label><input class="form-input" id="pf-code" value="'+(p?.code||'')+'"></div><div class="form-group"><label class="form-label">Departement *</label><select class="form-select" id="pf-dept"><option value="">--</option>'+dOpts+'</select></div><div class="form-group"><label class="form-label">Responsable</label><input class="form-input" id="pf-head" value="'+(p?.headName||'')+'"></div>','<button class="btn btn-secondary" onclick="SA.closeModal()">Annuler</button><button class="btn btn-primary" onclick="SA.saveProg(\''+(id||'')+'\')">Enregistrer</button>'); },
+    saveProg(id) { const ps=this.getProgs(),n=document.getElementById('pf-name').value,c=document.getElementById('pf-code').value.toUpperCase(),d=document.getElementById('pf-dept').value,h=document.getElementById('pf-head').value; if(!n||!c||!d){Utils.toast('Champs requis','error');return;} if(id){const i=ps.findIndex(x=>x.id===id);if(i>=0)ps[i]={...ps[i],name:n,code:c,dept:d,headName:h};}else ps.push({id:'prog-'+Date.now(),name:n,code:c,dept:d,headName:h}); localStorage.setItem('iut-progs',JSON.stringify(ps)); this.addAudit('FILIERE',id?'Modifie: '+n:'Cree: '+n); this.closeModal();Utils.toast('Enregistre','success');this.route(); },
+    deleteProg(id) { if(!confirm('Supprimer ?'))return; localStorage.setItem('iut-progs',JSON.stringify(this.getProgs().filter(x=>x.id!==id))); this.addAudit('FILIERE','Supprime: '+id); Utils.toast('Supprime','success');this.route(); },
+
+    /* ===================== CATEGORIES ===================== */
+    pgCats() { const cs=this.getCats(); return `<div class="page-header"><h1 class="page-title">Gestion des categories</h1><button class="btn btn-primary" onclick="SA.showCatForm()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Ajouter</button></div><div class="card" style="padding:0"><div class="table-container"><table><thead><tr><th>Nom</th><th>Description</th><th>Modele</th><th style="text-align:right">Actions</th></tr></thead><tbody>${cs.map(c=>'<tr><td class="fw-600">'+c.name+'</td><td class="text-secondary" style="font-size:13px;max-width:280px">'+c.desc+'</td><td><span class="badge '+(c.instructions?'badge-validated':'badge-closed')+'">'+(c.instructions?'Configure':'Non')+'</span></td><td class="table-actions"><button class="table-action-btn" onclick="SA.showCatForm(\''+c.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button class="table-action-btn danger" onclick="SA.deleteCat(\''+c.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>').join('')}</tbody></table></div></div>`; },
+    showCatForm(id) { const c=id?this.getCats().find(x=>x.id===id):null; this.modal(c?'Modifier':'Nouvelle categorie','<div class="form-group"><label class="form-label">Nom *</label><input class="form-input" id="cf-name" value="'+(c?.name||'')+'"></div><div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="cf-desc" rows="2">'+(c?.desc||'')+'</textarea></div><hr style="border:none;border-top:1px solid var(--border);margin:16px 0"><h4 style="font-size:14px;margin-bottom:12px">Modele de requete</h4><div class="form-group"><label class="form-label">Instructions</label><textarea class="form-textarea" id="cf-instr" rows="3">'+(c?.instructions||'')+'</textarea></div><div class="form-group"><label class="form-label">Gabarit pre-rempli</label><textarea class="form-textarea" id="cf-body" rows="4">'+(c?.bodyTemplate||'')+'</textarea></div><div class="form-group"><label class="form-label">Documents requis</label><input class="form-input" id="cf-docs" value="'+(c?.requiredDocuments||'')+'"></div>','<button class="btn btn-secondary" onclick="SA.closeModal()">Annuler</button><button class="btn btn-primary" onclick="SA.saveCat(\''+(id||'')+'\')">Enregistrer</button>',true); },
+    saveCat(id) { const cs=this.getCats(),n=document.getElementById('cf-name').value,d=document.getElementById('cf-desc').value,ins=document.getElementById('cf-instr').value,bt=document.getElementById('cf-body').value,rd=document.getElementById('cf-docs').value; if(!n){Utils.toast('Nom requis','error');return;} if(id){const i=cs.findIndex(x=>x.id===id);if(i>=0)cs[i]={...cs[i],name:n,desc:d,instructions:ins,bodyTemplate:bt,requiredDocuments:rd};}else cs.push({id:'cat-'+Date.now(),name:n,desc:d,instructions:ins,bodyTemplate:bt,requiredDocuments:rd}); localStorage.setItem('iut-cats',JSON.stringify(cs)); this.addAudit('CATEGORIE',id?'Modifie: '+n:'Cree: '+n); this.closeModal();Utils.toast('Enregistre','success');this.route(); },
+    deleteCat(id) { if(!confirm('Supprimer ?'))return; localStorage.setItem('iut-cats',JSON.stringify(this.getCats().filter(x=>x.id!==id))); this.addAudit('CATEGORIE','Supprime'); Utils.toast('Supprime','success');this.route(); },
+
+    /* ===================== ADMINISTRATEURS ===================== */
+    pgAdmins() {
+      const admins=Auth.getAdmins();
+      return `
+      <div class="page-header"><h1 class="page-title">Nomination des administrateurs</h1><button class="btn btn-primary" onclick="SA.showAdminForm()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nommer</button></div>
+      <div class="alert alert-info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><div><p style="font-size:14px">Les administrateurs se connectent avec leur adresse e-mail uniquement (sans mot de passe).</p><p style="font-size:13px;margin-top:4px">Lien : <a href="../admin/index.html" target="_blank" style="color:var(--primary)">admin/index.html</a></p></div></div>
+      <div class="card" style="padding:0">
+        ${admins.length>0?'<div class="table-container"><table><thead><tr><th>Nom</th><th>E-mail</th><th>Telephone</th><th>Departements</th><th>Categories</th><th style="text-align:right">Actions</th></tr></thead><tbody>'+admins.map(a=>'<tr><td><div class="flex items-center gap-2"><div class="user-avatar" style="width:32px;height:32px;font-size:11px">'+(a.firstName?.[0]||'')+(a.lastName?.[0]||'')+'</div><span class="fw-600" style="font-size:14px">'+a.firstName+' '+a.lastName+'</span></div></td><td class="text-primary" style="font-size:13px">'+a.email+'</td><td class="text-muted" style="font-size:13px">'+(a.phone||'-')+'</td><td class="text-muted" style="font-size:12px">'+(a.departmentIds?a.departmentIds.join(', '):'-')+'</td><td class="text-muted" style="font-size:12px">'+(a.categoryIds?a.categoryIds.length+' cat.':'-')+'</td><td class="table-actions"><button class="table-action-btn" onclick="SA.showAdminForm(\''+a.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button class="table-action-btn danger" onclick="SA.deleteAdmin(\''+a.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>').join('')+'</tbody></table></div>':'<div class="empty-state"><p>Aucun administrateur nomme.</p></div>'}
+      </div>`;
+    },
+    showAdminForm(id) { const a=id?Auth.getAllUsers().find(u=>u.id===id):null; const dc=CONFIG.DEPARTMENTS.map(d=>'<label class="checkbox-label"><input type="checkbox" name="af-d" value="'+d.code+'" '+((a?.departmentIds||[]).includes(d.code)?'checked':'')+'>'+d.code+' - '+d.name+'</label>').join(''); const cc=this.getCats().map(c=>'<label class="checkbox-label"><input type="checkbox" name="af-c" value="'+c.id+'" '+((a?.categoryIds||[]).includes(c.id)?'checked':'')+'>'+c.name+'</label>').join(''); this.modal(a?'Modifier':'Nommer un administrateur',(!a?'<div class="form-group"><label class="form-label">Adresse e-mail (identifiant) *</label><input type="email" class="form-input" id="af-email" placeholder="admin@exemple.com"></div><div class="form-group"><label class="form-label">Mot de passe *</label><input type="password" class="form-input" id="af-pwd" placeholder="Min. 6 caracteres"></div>':'<div class="form-group"><label class="form-label">E-mail</label><input class="form-input" value="'+a.email+'" disabled></div><div class="form-group"><label class="form-label">Nouveau mot de passe (laisser vide pour garder)</label><input type="password" class="form-input" id="af-pwd"></div>')+'<div class="form-row"><div class="form-group"><label class="form-label">Prenom *</label><input class="form-input" id="af-fn" value="'+(a?.firstName||'')+'"></div><div class="form-group"><label class="form-label">Nom *</label><input class="form-input" id="af-ln" value="'+(a?.lastName||'')+'"></div></div><div class="form-group"><label class="form-label">Telephone</label><input class="form-input" id="af-ph" value="'+(a?.phone||'')+'"></div><hr style="border:none;border-top:1px solid var(--border);margin:16px 0"><div class="form-group"><label class="form-label">Departements</label><div style="max-height:140px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:12px">'+dc+'</div></div><div class="form-group"><label class="form-label">Categories</label><div style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:12px">'+cc+'</div></div>','<button class="btn btn-secondary" onclick="SA.closeModal()">Annuler</button><button class="btn btn-primary" onclick="SA.saveAdmin(\''+(id||'')+'\')">Enregistrer</button>',true); },
+    saveAdmin(id) { const fn=document.getElementById('af-fn').value,ln=document.getElementById('af-ln').value,ph=document.getElementById('af-ph').value; const pw=document.getElementById('af-pwd')?.value||''; const di=Array.from(document.querySelectorAll('[name="af-d"]:checked')).map(i=>i.value); const ci=Array.from(document.querySelectorAll('[name="af-c"]:checked')).map(i=>i.value); if(!fn||!ln){Utils.toast('Prenom et nom requis','error');return;} if(id){const updates={firstName:fn,lastName:ln,phone:ph,departmentIds:di,categoryIds:ci};if(pw)updates.password=pw;Auth.updateUser(id,updates);}else{const em=document.getElementById('af-email').value;if(!em){Utils.toast('E-mail requis','error');return;}if(!pw||pw.length<6){Utils.toast('Mot de passe requis (min. 6 car.)','error');return;}const r=Auth.createAdmin({email:em,password:pw,firstName:fn,lastName:ln,phone:ph,departmentIds:di,categoryIds:ci});if(!r.success){Utils.toast(r.message,'error');return;}} this.addAudit('ADMIN',id?'Modifie: '+fn+' '+ln:'Nomme: '+fn+' '+ln); this.closeModal();Utils.toast('Enregistre','success');this.route(); },
+    deleteAdmin(id) { if(!confirm('Retirer ?'))return; Auth.deleteUser(id); this.addAudit('ADMIN','Retire: '+id); Utils.toast('Retire','success');this.route(); },
+
+    /* ===================== SUPER ADMINISTRATEURS ===================== */
+    pgSuperAdmins() {
+      const sas=Auth.getAllUsers().filter(u=>u.role==='SUPER_ADMIN');
+      return `
+      <div class="page-header"><h1 class="page-title">Gestion des Super Administrateurs</h1><button class="btn btn-primary" onclick="SA.showSAForm()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Ajouter un Super Admin</button></div>
+      <div class="alert alert-warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><div><p style="font-size:14px">Les Super Administrateurs ont un acces total a la plateforme. Ils se connectent avec leur e-mail et mot de passe sur cette meme page (superadmin/index.html).</p></div></div>
+      <div class="card" style="padding:0"><div class="table-container"><table><thead><tr><th>Nom</th><th>E-mail</th><th>Telephone</th><th>Date de creation</th><th style="text-align:right">Actions</th></tr></thead><tbody>
+        ${sas.map(s=>'<tr><td><div class="flex items-center gap-2"><div class="user-avatar" style="width:32px;height:32px;font-size:11px">'+(s.firstName?.[0]||'')+(s.lastName?.[0]||'')+'</div><span class="fw-600">'+s.firstName+' '+s.lastName+'</span></div></td><td class="text-primary" style="font-size:13px">'+s.email+'</td><td class="text-muted" style="font-size:13px">'+(s.phone||'-')+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(s.createdAt)+'</td><td class="table-actions"><button class="table-action-btn" onclick="SA.showSAForm(\''+s.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></td></tr>').join('')}
+      </tbody></table></div></div>`;
+    },
+    showSAForm(id) {
+      const s=id?Auth.getAllUsers().find(u=>u.id===id):null;
+      this.modal(s?'Modifier le Super Admin':'Nouveau Super Administrateur',
+        (!s?'<div class="form-group"><label class="form-label">Adresse e-mail *</label><input type="email" class="form-input" id="sa-f-email"></div><div class="form-group"><label class="form-label">Mot de passe *</label><input type="password" class="form-input" id="sa-f-pwd" placeholder="Min. 8 caracteres"></div>':'<div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="sa-f-email" value="'+s.email+'"></div><div class="form-group"><label class="form-label">Nouveau mot de passe (laisser vide pour garder)</label><input type="password" class="form-input" id="sa-f-pwd"></div>')+
+        '<div class="form-row"><div class="form-group"><label class="form-label">Prenom *</label><input class="form-input" id="sa-f-fn" value="'+(s?.firstName||'')+'"></div><div class="form-group"><label class="form-label">Nom *</label><input class="form-input" id="sa-f-ln" value="'+(s?.lastName||'')+'"></div></div><div class="form-group"><label class="form-label">Telephone</label><input class="form-input" id="sa-f-ph" value="'+(s?.phone||'')+'"></div>',
+        '<button class="btn btn-secondary" onclick="SA.closeModal()">Annuler</button><button class="btn btn-primary" onclick="SA.saveSA(\''+(id||'')+'\')">Enregistrer</button>');
+    },
+    saveSA(id) {
+      const fn=document.getElementById('sa-f-fn').value,ln=document.getElementById('sa-f-ln').value,ph=document.getElementById('sa-f-ph').value,em=document.getElementById('sa-f-email').value,pw=document.getElementById('sa-f-pwd').value;
+      if(!fn||!ln||!em){Utils.toast('Prenom, nom et e-mail requis','error');return;}
+      if(id) {
+        const updates={firstName:fn,lastName:ln,phone:ph,email:em};
+        if(pw) updates.password=pw;
+        Auth.updateUser(id,updates);
+        const cur=Auth.getUser(); if(cur&&cur.id===id) Auth.updateProfile(updates);
+      } else {
+        if(!pw||pw.length<8){Utils.toast('Mot de passe requis (min. 8 caracteres)','error');return;}
+        const users=Auth.getAllUsers();
+        if(users.find(u=>u.email===em)){Utils.toast('E-mail deja utilise','error');return;}
+        users.push({id:'usr-'+Date.now(),email:em,password:pw,firstName:fn,lastName:ln,phone:ph,role:'SUPER_ADMIN',isActive:true,emailVerified:true,createdAt:new Date().toISOString()});
+        localStorage.setItem('iut-users',JSON.stringify(users));
+      }
+      this.addAudit('SUPER_ADMIN',id?'Modifie: '+fn+' '+ln:'Cree: '+fn+' '+ln+' ('+em+')');
+      this.closeModal();Utils.toast('Enregistre','success');this.route();
+    },
+
+    /* ===================== TOUS LES COMPTES ===================== */
+    pgUsers() { const us=Auth.getAllUsers(); const rl={STUDENT:'Etudiant',ADMIN:'Administrateur',SUPER_ADMIN:'Super Admin'}; const rb={STUDENT:'badge-draft',ADMIN:'badge-submitted',SUPER_ADMIN:'badge-reopened'}; return `<div class="page-header"><h1 class="page-title">Tous les comptes (${us.length})</h1></div><div class="card" style="padding:0"><div class="table-container"><table><thead><tr><th>Nom</th><th>E-mail</th><th>Role</th><th>Departement</th><th>Statut</th><th>Date</th></tr></thead><tbody>${us.map(u=>'<tr><td><div class="flex items-center gap-2"><div class="user-avatar" style="width:32px;height:32px;font-size:11px">'+(u.firstName?.[0]||'')+(u.lastName?.[0]||'')+'</div><div><p class="fw-600" style="font-size:14px">'+u.firstName+' '+u.lastName+'</p>'+(u.matricule?'<p class="text-muted" style="font-size:11px">'+u.matricule+'</p>':'')+'</div></div></td><td class="text-secondary" style="font-size:13px">'+u.email+'</td><td><span class="badge '+(rb[u.role]||'badge-draft')+'">'+(rl[u.role]||u.role)+'</span></td><td class="text-muted" style="font-size:13px">'+(u.department||(u.departmentIds?u.departmentIds.join(', '):'-'))+'</td><td><span class="badge '+(u.isActive?'badge-validated':'badge-rejected')+'">'+(u.isActive?'Actif':'Inactif')+'</span></td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(u.createdAt)+'</td></tr>').join('')}</tbody></table></div></div>`; },
+
+    /* ===================== JOURNAL D'AUDIT ===================== */
+    pgAudit() {
+      const logs=JSON.parse(localStorage.getItem('iut-audit')||'[]');
+      return `
+      <div class="page-header"><h1 class="page-title">Journal d'audit (${logs.length})</h1>${logs.length>0?'<button class="btn btn-outline btn-sm" onclick="if(confirm(\'Vider le journal ?\')){ localStorage.removeItem(\'iut-audit\');SA.route();}">Vider</button>':''}</div>
+      <div class="card" style="padding:0">
+        ${logs.length>0?'<div class="table-container"><table><thead><tr><th>Date</th><th>Utilisateur</th><th>Action</th><th>Details</th></tr></thead><tbody>'+logs.slice(0,100).map(l=>'<tr><td class="text-muted" style="font-size:12px;white-space:nowrap">'+Utils.formatDateTime(l.date)+'</td><td style="font-size:13px">'+Utils.escapeHtml(l.user||'-')+'<br><span class="text-muted" style="font-size:11px">'+(l.userEmail||'')+'</span></td><td><span class="badge badge-submitted" style="font-size:11px">'+l.action+'</span></td><td class="text-secondary" style="font-size:13px">'+Utils.escapeHtml(l.details||'-')+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty-state"><p>Le journal se remplit automatiquement a chaque action effectuee sur la plateforme (creation, modification, suppression, connexion).</p></div>'}
+      </div>`;
+    },
+
+    /* ===================== NOTIFICATIONS ===================== */
+    pgNotifs() { const u=Auth.getUser(); const ns=NotifStore.getAll(u.id); return `<div class="page-header"><h1 class="page-title">Notifications</h1></div><div class="card" style="padding:0">${ns.length>0?ns.map(n=>'<div style="display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border)"><div style="flex:1"><p class="fw-600" style="font-size:14px">'+n.title+'</p><p class="text-secondary" style="font-size:13px;margin-top:2px">'+n.message+'</p><p class="text-muted" style="font-size:12px;margin-top:4px">'+Utils.timeAgo(n.createdAt)+'</p></div></div>').join(''):'<div class="empty-state"><p>Aucune notification</p></div>'}</div>`; },
+
+    /* ===================== PROFIL ===================== */
+    pgProfile() {
+      const u=Auth.getUser();
+      return `
+      <div style="max-width:640px">
+        <h1 class="page-title mb-3">Mon profil</h1>
+        <div class="card mb-3">
+          <div class="flex items-center gap-3 mb-3"><div class="user-avatar" style="width:56px;height:56px;font-size:20px">${u.firstName?.[0]}${u.lastName?.[0]}</div><div><p class="fw-600" style="font-size:18px">${u.firstName} ${u.lastName}</p><p class="text-muted" style="font-size:13px">${u.email}</p><p class="badge badge-reopened mt-1">Super Administrateur</p></div></div>
+          <form onsubmit="return SA.updateProfile(event)">
+            <div class="form-row"><div class="form-group"><label class="form-label">Prenom</label><input class="form-input" id="sp-fn" value="${u.firstName}"></div><div class="form-group"><label class="form-label">Nom</label><input class="form-input" id="sp-ln" value="${u.lastName}"></div></div>
+            <div class="form-group"><label class="form-label">E-mail</label><input type="email" class="form-input" id="sp-email" value="${u.email}"></div>
+            <div class="form-group"><label class="form-label">Telephone</label><input class="form-input" id="sp-phone" value="${u.phone||''}"></div>
+            <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+            <div class="form-group"><label class="form-label">Nouveau mot de passe (laisser vide pour ne pas changer)</label><input type="password" class="form-input" id="sp-pwd"></div>
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+          </form>
+        </div>
+        <div class="card">
+          <h3 class="card-title mb-2">Informations pour les notifications WhatsApp/SMS</h3>
+          <p class="text-secondary" style="font-size:14px;margin-bottom:12px">Pour activer les notifications par WhatsApp et SMS, vous devez integrer un service tiers. Voici les options recommandees :</p>
+          <div style="font-size:14px;line-height:1.8">
+            <p><strong>WhatsApp Business API :</strong> Utilisez Twilio (<a href="https://www.twilio.com/whatsapp" target="_blank" style="color:var(--primary)">twilio.com/whatsapp</a>) ou Meta Business Platform. Necessite un compte WhatsApp Business verifie et une cle API.</p>
+            <p><strong>SMS :</strong> Utilisez Twilio SMS (<a href="https://www.twilio.com/sms" target="_blank" style="color:var(--primary)">twilio.com/sms</a>) ou Orange SMS API pour le Cameroun. Necessite un numero virtuel et des credits SMS.</p>
+            <p><strong>Integration :</strong> Une fois le compte cree, ajoutez les cles API dans la configuration Supabase (Edge Functions) pour envoyer automatiquement les notifications.</p>
+          </div>
+        </div>
+      </div>`;
+    },
+    updateProfile(e) { e.preventDefault(); const up={firstName:document.getElementById('sp-fn').value,lastName:document.getElementById('sp-ln').value,email:document.getElementById('sp-email').value,phone:document.getElementById('sp-phone').value}; const pw=document.getElementById('sp-pwd').value; if(pw)up.password=pw; const u=Auth.getUser(); Auth.updateUser(u.id,up); Auth.updateProfile(up); this.addAudit('PROFIL','Profil Super Admin modifie'); Utils.toast('Profil mis a jour','success'); this.route(); return false; },
+  };
+
+  document.addEventListener('DOMContentLoaded', () => SA.init());
+  </script>
+</body>
+</html>
