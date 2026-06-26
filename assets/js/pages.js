@@ -454,14 +454,29 @@ const Pages = {
     const desc = document.getElementById('req-description').value;
     if (!isDraft && (!catId || !title)) { Utils.toast('Veuillez remplir tous les champs obligatoires', 'error'); return; }
     const filesInput = document.getElementById('req-files');
-    const fileNames = filesInput && filesInput.files ? Array.from(filesInput.files).map(f => f.name) : [];
+    const files = filesInput && filesInput.files ? Array.from(filesInput.files) : [];
+    const fileNames = files.map(f => f.name);
+
+    // Upload des fichiers dans Supabase Storage
+    const fileUrls = [];
+    if (files.length > 0) {
+      Utils.toast('Upload des fichiers en cours...', 'info');
+      const timestamp = Date.now();
+      for (const file of files) {
+        const path = timestamp + '/' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const url = await SB.uploadFile(file, path);
+        if (url) fileUrls.push({ name: file.name, url: url, size: file.size });
+      }
+    }
+
     const request = await RequestStore.create({
       title: title, description: desc, categoryId: catId, categoryName: cat?.name || '',
       department: dept, program: prog, studentId: user.id,
       studentName: ((user.first_name||user.firstName||'')||'')+' '+((user.last_name||user.lastName||'')||''),
       studentEmail: user.email||'', studentPhone: user.phone||'', studentMatricule: user.matricule||'',
-      isDraft: isDraft, fileNames: fileNames,
+      isDraft: isDraft, fileNames: fileNames, fileUrls: fileUrls,
     });
+    if (!request) { Utils.toast('Erreur lors de la soumission', 'error'); return; }
     Utils.toast(isDraft ? 'Brouillon enregistre' : 'Requete '+(request.reference_number||'')+' soumise avec succes !', 'success');
     location.hash = '#/requests/'+request.id;
   },
@@ -478,6 +493,7 @@ const Pages = {
     const history = await RequestStore.getHistory(id);
     req.messages = messages;
     req.statusHistory = history;
+    try { req.file_urls = typeof req.file_urls === 'string' ? JSON.parse(req.file_urls) : (req.file_urls || []); } catch(e) { req.file_urls = []; }
 
     return `
     <div class="flex items-center gap-2 mb-3">
@@ -492,7 +508,7 @@ const Pages = {
         <div class="card mb-3">
           <h3 class="card-title mb-2">${t('req.description')}</h3>
           <p style="white-space:pre-wrap;font-size:14px;color:var(--text-secondary)">${Utils.escapeHtml(req.description)}</p>
-          ${(req.attachments||[]).length > 0 ? '<h4 style="margin-top:16px;font-size:13px;color:var(--text-muted)">Pieces jointes :</h4><div class="file-list">'+req.attachments.map(a => '<div class="file-item"><div class="file-item-info"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg> '+Utils.escapeHtml(a.name || a)+'</div></div>').join('')+'</div>' : ''}
+          ${(req.file_names||[]).length > 0 ? '<h4 style="margin-top:16px;font-size:13px;color:var(--text-muted)">Pieces jointes ('+(req.file_names||[]).length+') :</h4><div class="file-list">'+(req.file_names||[]).map((name, i) => { const url = req.file_urls && req.file_urls[i] ? (typeof req.file_urls[i] === 'string' ? req.file_urls[i] : req.file_urls[i].url) : null; return '<div class="file-item"><div class="file-item-info"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg> '+Utils.escapeHtml(name)+'</div>'+(url ? '<a href="'+url+'" target="_blank" class="btn btn-sm btn-outline" style="font-size:11px">Telecharger</a>' : '')+'</div>'; }).join('')+'</div>' : ''}
         </div>
 
         <div class="card mb-3">

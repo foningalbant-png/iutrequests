@@ -55,6 +55,22 @@ const SB = {
   async insert(table, data) { const r = await this.query(table, 'POST', { body: data }); return r ? (Array.isArray(r) ? r[0] : r) : null; },
   async update(table, filter, data) { return await this.query(table, 'PATCH', { filter, body: data }); },
   async delete(table, filter) { return await this.query(table, 'DELETE', { filter }); },
+
+  async uploadFile(file, path) {
+    try {
+      const res = await fetch(SUPABASE_URL + '/storage/v1/object/fichiers/' + path, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY },
+        body: file
+      });
+      if (!res.ok) { console.error('Upload error:', await res.text()); return null; }
+      return SUPABASE_URL + '/storage/v1/object/public/fichiers/' + path;
+    } catch (e) { console.error('Upload failed:', e); return null; }
+  },
+
+  getFileUrl(path) {
+    return SUPABASE_URL + '/storage/v1/object/public/fichiers/' + path;
+  },
 };
 
 /* --- Cache local pour performance --- */
@@ -211,7 +227,8 @@ const RequestStore = {
       student_phone: data.studentPhone, student_matricule: data.studentMatricule,
       department: data.department, program: data.program,
       category_name: data.categoryName, priority: 'NORMALE',
-      file_names: data.fileNames || []
+      file_names: data.fileNames || [],
+      file_urls: data.fileUrls ? JSON.stringify(data.fileUrls) : '[]'
     });
     if (!req) return null;
 
