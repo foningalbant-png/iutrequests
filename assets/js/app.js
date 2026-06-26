@@ -11,7 +11,7 @@ const App = {
     this.route();
   },
 
-  route() {
+  async route() {
     const hash = location.hash.slice(1) || '/';
     const user = Auth.getUser();
     this.closeDropdowns();
@@ -24,25 +24,40 @@ const App = {
     const path = hash.split('?')[0];
     let content = '';
 
+    // Pages statiques (pas de chargement async)
     switch (path) {
       case '/': content = Pages.home(); break;
       case '/login': content = Pages.login(); break;
       case '/register': content = Pages.register(); break;
       case '/faq': content = Pages.faq(); break;
       case '/forgot-password': content = Pages.forgotPassword(); break;
-      case '/dashboard':
-        if (user && user.role !== 'STUDENT') { Auth.logout(); location.hash = '#/login'; return; }
-        content = Pages.dashboard(); break;
-      case '/requests': content = Pages.requestList(); break;
       case '/requests/new': content = Pages.createRequest(); break;
-      case '/notifications': content = Pages.notifications(); break;
       case '/profile': content = Pages.profile(); break;
-      default:
-        if (path.startsWith('/requests/')) {
-          content = Pages.requestDetail(path.split('/')[2]);
-        } else {
-          content = '<div class="empty-state mt-4"><h2>Page non trouvee</h2><p><a href="#/">Retour a l\'accueil</a></p></div>';
-        }
+    }
+
+    // Si page statique trouvee, afficher directement
+    if (content) {
+      document.getElementById('app').innerHTML = this.renderLayout(content, path);
+      this.bindEvents();
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    // Pages dynamiques (chargement depuis Supabase)
+    // Afficher le layout avec un loading
+    document.getElementById('app').innerHTML = this.renderLayout('<div class="loading-page"><div class="spinner"></div><p>Chargement...</p></div>', path);
+
+    if (path === '/dashboard') {
+      if (user && user.role !== 'STUDENT') { Auth.logout(); location.hash = '#/login'; return; }
+      content = await Pages.dashboard();
+    } else if (path === '/requests') {
+      content = await Pages.requestList();
+    } else if (path === '/notifications') {
+      content = await Pages.notifications();
+    } else if (path.startsWith('/requests/')) {
+      content = await Pages.requestDetail(path.split('/')[2]);
+    } else {
+      content = '<div class="empty-state mt-4"><h2>Page non trouvee</h2><p><a href="#/">Retour a l\'accueil</a></p></div>';
     }
 
     document.getElementById('app').innerHTML = this.renderLayout(content, path);
@@ -118,12 +133,12 @@ const App = {
             </a>
             <div class="user-menu" id="user-menu">
               <button class="user-menu-trigger" onclick="App.toggleDropdown('user-dropdown')">
-                <div class="user-avatar">${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}</div>
-                <span class="user-name">${user.firstName} ${user.lastName}</span>
+                <div class="user-avatar">${(user.first_name||user.firstName||'')?.[0] || ''}${(user.last_name||user.lastName||'')?.[0] || ''}</div>
+                <span class="user-name">${(user.first_name||user.firstName||'')} ${(user.last_name||user.lastName||'')}</span>
               </button>
               <div id="user-dropdown" class="dropdown hidden">
                 <div class="dropdown-header">
-                  <div class="dropdown-header-name">${user.firstName} ${user.lastName}</div>
+                  <div class="dropdown-header-name">${(user.first_name||user.firstName||'')} ${(user.last_name||user.lastName||'')}</div>
                   <div class="dropdown-header-email">${user.email}</div>
                 </div>
                 <a href="#/profile" class="dropdown-item" onclick="App.closeDropdowns()">

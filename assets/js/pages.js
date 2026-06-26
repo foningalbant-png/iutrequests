@@ -124,9 +124,9 @@ const Pages = {
     </div>`;
   },
 
-  handleLogin(e) {
+  async handleLogin(e) {
     e.preventDefault();
-    const result = Auth.login(document.getElementById('login-email').value, document.getElementById('login-password').value);
+    const result = await Auth.login(document.getElementById('login-email').value, document.getElementById('login-password').value);
     if (result.success) { Utils.toast('Connexion reussie', 'success'); location.hash = '#/dashboard'; }
     else Utils.toast(result.message, 'error');
     return false;
@@ -166,10 +166,10 @@ const Pages = {
 
   _forgotEmail: '',
 
-  handleForgotStep1(e) {
+  async handleForgotStep1(e) {
     e.preventDefault();
     const email = document.getElementById('forgot-email').value;
-    const result = Auth.generateResetCode(email);
+    const result = await Auth.generateResetCode(email);
     if (!result.success) { Utils.toast(result.message, 'error'); return false; }
     this._forgotEmail = email;
     document.getElementById('forgot-step1').classList.add('hidden');
@@ -178,14 +178,15 @@ const Pages = {
     return false;
   },
 
-  handleForgotStep2(e) {
+  async handleForgotStep2(e) {
     e.preventDefault();
     const code = document.getElementById('forgot-code').value;
     const newPwd = document.getElementById('forgot-newpwd').value;
     const confirm = document.getElementById('forgot-confirmpwd').value;
     if (newPwd !== confirm) { Utils.toast('Les mots de passe ne correspondent pas', 'error'); return false; }
     if (newPwd.length < 8) { Utils.toast('Minimum 8 caracteres', 'error'); return false; }
-    const result = Auth.resetPassword(this._forgotEmail, code, newPwd);
+    if (code !== this._resetCode) { Utils.toast('Code incorrect', 'error'); return false; }
+    const result = await Auth.resetPassword(this._forgotEmail, newPwd);
     if (result.success) { Utils.toast('Mot de passe reinitialise avec succes ! Connectez-vous.', 'success'); location.hash = '#/login'; }
     else Utils.toast(result.message, 'error');
     return false;
@@ -240,12 +241,12 @@ const Pages = {
     </div>`;
   },
 
-  handleRegister(e) {
+  async handleRegister(e) {
     e.preventDefault();
     const pw = document.getElementById('reg-password').value;
     if (pw !== document.getElementById('reg-confirmPassword').value) { Utils.toast('Les mots de passe ne correspondent pas', 'error'); return false; }
     if (pw.length < 8) { Utils.toast('Le mot de passe doit contenir au moins 8 caracteres', 'error'); return false; }
-    const result = Auth.register({
+    const result = await Auth.register({
       firstName: document.getElementById('reg-firstName').value,
       lastName: document.getElementById('reg-lastName').value,
       email: document.getElementById('reg-email').value,
@@ -264,13 +265,13 @@ const Pages = {
   // =====================================================
   //  DASHBOARD ETUDIANT
   // =====================================================
-  dashboard() {
+  async dashboard() {
     const user = Auth.getUser();
     if (!user) return '';
     if (user.role === 'ADMIN') return '<div class="empty-state mt-4"><h2>Espace Administrateur</h2><p>Veuillez acceder a votre espace dedie.</p><a href="admin/index.html" class="btn btn-primary mt-2">Acceder a l\'espace Admin</a></div>';
     if (user.role === 'SUPER_ADMIN') return '<div class="empty-state mt-4"><h2>Super Administration</h2><p>Veuillez acceder a votre espace dedie.</p><a href="superadmin/index.html" class="btn btn-primary mt-2">Acceder au Super Admin</a></div>';
     const t = I18N.t.bind(I18N);
-    const requests = RequestStore.getByStudent(user.id);
+    const requests = await RequestStore.getByStudent(user.id);
     const counts = { total: requests.length, pending: 0, validated: 0, rejected: 0, awaiting: 0 };
     requests.forEach(r => {
       if (['SUBMITTED','RECEIVED','IN_PROGRESS'].includes(r.status)) counts.pending++;
@@ -282,7 +283,7 @@ const Pages = {
 
     return `
     <div class="page-header">
-      <div><h1 class="page-title">${t('dash.welcome')}, ${Utils.escapeHtml(user.firstName)}</h1><p class="page-subtitle">${Utils.escapeHtml(user.department || '')} ${user.program ? '- ' + Utils.escapeHtml(user.program) : ''}</p></div>
+      <div><h1 class="page-title">${t('dash.welcome')}, ${Utils.escapeHtml((user.first_name||user.firstName||''))}</h1><p class="page-subtitle">${Utils.escapeHtml(user.department || '')} ${user.program ? '- ' + Utils.escapeHtml(user.program) : ''}</p></div>
       <a href="#/requests/new" class="btn btn-primary"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${t('nav.newRequest')}</a>
     </div>
 
@@ -297,22 +298,22 @@ const Pages = {
 
     <div class="card">
       <div class="card-header"><span class="card-title">${t('dash.recent')}</span><a href="#/requests" class="btn btn-ghost btn-sm">${t('common.all')}</a></div>
-      ${recent.length > 0 ? '<div class="table-container"><table><thead><tr><th>Reference</th><th>Objet</th><th>Categorie</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+recent.map(r => '<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td><span class="font-mono text-primary" style="font-size:13px">'+r.referenceNumber+'</span></td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.categoryName||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.createdAt)+'</td></tr>').join('')+'</tbody></table></div>' : '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg><p>Aucune requete pour le moment.</p><a href="#/requests/new" class="btn btn-primary btn-sm mt-2">Soumettre ma premiere requete</a></div>'}
+      ${recent.length > 0 ? '<div class="table-container"><table><thead><tr><th>Reference</th><th>Objet</th><th>Categorie</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+recent.map(r => '<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td><span class="font-mono text-primary" style="font-size:13px">'+r.reference_number+'</span></td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.category_name||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.created_at)+'</td></tr>').join('')+'</tbody></table></div>' : '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg><p>Aucune requete pour le moment.</p><a href="#/requests/new" class="btn btn-primary btn-sm mt-2">Soumettre ma premiere requete</a></div>'}
     </div>`;
   },
 
   // =====================================================
   //  LISTE DES REQUETES + RECHERCHE + FILTRES
   // =====================================================
-  requestList() {
+  async requestList() {
     const user = Auth.getUser();
     const t = I18N.t.bind(I18N);
-    const allRequests = RequestStore.getByStudent(user.id);
+    const allRequests = await RequestStore.getByStudent(user.id);
     const statusFilter = localStorage.getItem('iut-filter-status') || '';
     const searchTerm = localStorage.getItem('iut-filter-search') || '';
     let requests = allRequests;
     if (statusFilter) requests = requests.filter(r => r.status === statusFilter);
-    if (searchTerm) requests = requests.filter(r => r.referenceNumber.toLowerCase().includes(searchTerm.toLowerCase()) || r.title.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (searchTerm) requests = requests.filter(r => r.reference_number.toLowerCase().includes(searchTerm.toLowerCase()) || r.title.toLowerCase().includes(searchTerm.toLowerCase()));
     requests = requests.slice().reverse();
 
     const statusOpts = Object.keys(CONFIG.STATUSES).map(s => '<option value="'+s+'" '+(statusFilter===s?'selected':'')+'>'+CONFIG.STATUSES[s].fr+'</option>').join('');
@@ -338,7 +339,7 @@ const Pages = {
 
       <p class="text-muted mb-2" style="font-size:13px">${requests.length} requete(s) ${statusFilter ? '- Filtre: '+CONFIG.STATUSES[statusFilter]?.fr : ''} ${searchTerm ? '- Recherche: "'+Utils.escapeHtml(searchTerm)+'"' : ''}</p>
 
-      ${requests.length > 0 ? '<div class="table-container"><table><thead><tr><th>Reference</th><th>Objet</th><th>Categorie</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+requests.map(r => '<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td><span class="font-mono text-primary" style="font-size:13px">'+r.referenceNumber+'</span></td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.categoryName||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.createdAt)+'</td></tr>').join('')+'</tbody></table></div>' : '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg><p>Aucune requete trouvee.</p></div>'}
+      ${requests.length > 0 ? '<div class="table-container"><table><thead><tr><th>Reference</th><th>Objet</th><th>Categorie</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+requests.map(r => '<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td><span class="font-mono text-primary" style="font-size:13px">'+r.reference_number+'</span></td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.category_name||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.created_at)+'</td></tr>').join('')+'</tbody></table></div>' : '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg><p>Aucune requete trouvee.</p></div>'}
     </div>`;
   },
 
@@ -442,7 +443,7 @@ const Pages = {
 
   handleCreateRequest(e) { e.preventDefault(); this.submitRequest(false); return false; },
 
-  submitRequest(isDraft) {
+  async submitRequest(isDraft) {
     const user = Auth.getUser();
     const catId = document.getElementById('req-category').value;
     const cats = this._getCats();
@@ -454,30 +455,34 @@ const Pages = {
     if (!isDraft && (!catId || !title)) { Utils.toast('Veuillez remplir tous les champs obligatoires', 'error'); return; }
     const filesInput = document.getElementById('req-files');
     const fileNames = filesInput && filesInput.files ? Array.from(filesInput.files).map(f => f.name) : [];
-    const request = RequestStore.create({
+    const request = await RequestStore.create({
       title: title, description: desc, categoryId: catId, categoryName: cat?.name || '',
       department: dept, program: prog, studentId: user.id,
-      studentName: (user.firstName||'')+' '+(user.lastName||''),
+      studentName: ((user.first_name||user.firstName||'')||'')+' '+((user.last_name||user.lastName||'')||''),
       studentEmail: user.email||'', studentPhone: user.phone||'', studentMatricule: user.matricule||'',
       isDraft: isDraft, fileNames: fileNames,
     });
-    Utils.toast(isDraft ? 'Brouillon enregistre' : 'Requete '+request.referenceNumber+' soumise avec succes !', 'success');
+    Utils.toast(isDraft ? 'Brouillon enregistre' : 'Requete '+(request.reference_number||'')+' soumise avec succes !', 'success');
     location.hash = '#/requests/'+request.id;
   },
 
   // =====================================================
   //  DETAIL D'UNE REQUETE (vue etudiant)
   // =====================================================
-  requestDetail(id) {
+  async requestDetail(id) {
     const user = Auth.getUser();
     const t = I18N.t.bind(I18N);
-    const req = RequestStore.getById(id);
+    const req = await RequestStore.getById(id);
     if (!req) return '<div class="empty-state mt-4"><h2>Requete non trouvee</h2><a href="#/requests" class="btn btn-primary mt-2">Retour</a></div>';
+    const messages = await RequestStore.getMessages(id);
+    const history = await RequestStore.getHistory(id);
+    req.messages = messages;
+    req.statusHistory = history;
 
     return `
     <div class="flex items-center gap-2 mb-3">
       <a href="#/requests" class="btn btn-ghost btn-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></a>
-      <div class="flex-1"><h1 class="page-title" style="font-size:1.25rem">${Utils.escapeHtml(req.title)}</h1><p class="text-muted font-mono" style="font-size:13px">${req.referenceNumber}</p></div>
+      <div class="flex-1"><h1 class="page-title" style="font-size:1.25rem">${Utils.escapeHtml(req.title)}</h1><p class="text-muted font-mono" style="font-size:13px">${req.reference_number}</p></div>
       ${Utils.statusBadge(req.status)}
       <button class="btn btn-ghost btn-sm" onclick="window.print()" title="Imprimer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
     </div>
@@ -506,13 +511,13 @@ const Pages = {
         <div class="card mb-3">
           <h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Informations</h4>
           <div style="font-size:14px">
-            <div class="flex justify-between mb-1"><span class="text-muted">Reference</span><span class="font-mono fw-600 text-primary">${req.referenceNumber}</span></div>
-            <div class="flex justify-between mb-1"><span class="text-muted">Categorie</span><span>${Utils.escapeHtml(req.categoryName||'-')}</span></div>
+            <div class="flex justify-between mb-1"><span class="text-muted">Reference</span><span class="font-mono fw-600 text-primary">${req.reference_number}</span></div>
+            <div class="flex justify-between mb-1"><span class="text-muted">Categorie</span><span>${Utils.escapeHtml(req.category_name||'-')}</span></div>
             <div class="flex justify-between mb-1"><span class="text-muted">Departement</span><span>${Utils.escapeHtml(req.department||'-')}</span></div>
             ${req.program ? '<div class="flex justify-between mb-1"><span class="text-muted">Filiere</span><span>'+Utils.escapeHtml(req.program)+'</span></div>' : ''}
             <div class="flex justify-between mb-1"><span class="text-muted">Creee le</span><span style="font-size:12px">${Utils.formatDateTime(req.createdAt)}</span></div>
-            <div class="flex justify-between mb-1"><span class="text-muted">Consultee</span><span style="font-size:12px">${req.firstViewedAt ? Utils.formatDateTime(req.firstViewedAt) : '<span style="color:var(--yellow-dark)">Pas encore</span>'}</span></div>
-            <div class="flex justify-between mb-1"><span class="text-muted">Relances</span><span>${req.reminderCount||0}</span></div>
+            <div class="flex justify-between mb-1"><span class="text-muted">Consultee</span><span style="font-size:12px">${req.first_viewed_at ? Utils.formatDateTime(req.first_viewed_at) : '<span style="color:var(--yellow-dark)">Pas encore</span>'}</span></div>
+            <div class="flex justify-between mb-1"><span class="text-muted">Relances</span><span>${req.reminder_count||0}</span></div>
           </div>
         </div>
 
@@ -525,28 +530,28 @@ const Pages = {
           </div>
         </div>
 
-        ${(req.statusHistory||[]).length > 0 ? '<div class="card"><h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Historique des statuts</h4><div class="timeline">'+req.statusHistory.map(sh => '<div class="timeline-item"><div class="timeline-content">'+Utils.statusBadge(sh.status)+(sh.reason?'<p style="font-size:12px;color:var(--text-muted);margin-top:4px">'+Utils.escapeHtml(sh.reason)+'</p>':'')+'<p class="timeline-date">'+Utils.escapeHtml(sh.changedBy)+' - '+Utils.formatDateTime(sh.date)+'</p></div></div>').join('')+'</div></div>' : ''}
+        ${(req.statusHistory||[]||[]).length > 0 ? '<div class="card"><h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Historique des statuts</h4><div class="timeline">'+req.statusHistory||[].map(sh => '<div class="timeline-item"><div class="timeline-content">'+Utils.statusBadge(sh.status)+(sh.reason?'<p style="font-size:12px;color:var(--text-muted);margin-top:4px">'+Utils.escapeHtml(sh.reason)+'</p>':'')+'<p class="timeline-date">'+Utils.escapeHtml(sh.changedBy)+' - '+Utils.formatDateTime(sh.date)+'</p></div></div>').join('')+'</div></div>' : ''}
       </div>
     </div>`;
   },
 
-  sendMessage(requestId) {
+  async sendMessage(requestId) {
     const input = document.getElementById('message-input');
     if (!input || !input.value.trim()) return;
     const user = Auth.getUser();
-    RequestStore.addMessage(requestId, user.id, (user.firstName||'')+' '+(user.lastName||''), user.role||'STUDENT', input.value.trim());
+    await RequestStore.addMessage(requestId, user.id, (user.first_name||(user.first_name||user.firstName||'')||'')+' '+(user.last_name||(user.last_name||user.lastName||'')||''), user.role||'STUDENT', input.value.trim());
     App.route();
   },
 
-  remindRequest(id) {
-    RequestStore.remind(id);
+  async remindRequest(id) {
+    await RequestStore.remind(id);
     Utils.toast('Relance envoyee avec succes', 'success');
     App.route();
   },
 
-  deleteRequest(id) {
+  async deleteRequest(id) {
     if (!confirm('Etes-vous sur de vouloir supprimer cette requete ? Cette action est irreversible.')) return;
-    RequestStore.delete(id);
+    await RequestStore.delete(id);
     Utils.toast('Requete supprimee', 'success');
     location.hash = '#/requests';
   },
@@ -554,18 +559,18 @@ const Pages = {
   // =====================================================
   //  NOTIFICATIONS
   // =====================================================
-  notifications() {
+  async notifications() {
     const user = Auth.getUser();
     const t = I18N.t.bind(I18N);
-    const notifs = NotifStore.getAll(user.id);
-    const unread = notifs.filter(n => !n.isRead).length;
+    const notifs = await NotifStore.getAll(user.id);
+    const unread = notifs.filter(n => !n.is_read).length;
     return `
     <div class="page-header">
       <div><h1 class="page-title">${t('notif.title')}</h1>${unread > 0 ? '<p class="page-subtitle">'+unread+' '+t('notif.unread')+'</p>' : ''}</div>
       ${unread > 0 ? '<button class="btn btn-outline btn-sm" onclick="Pages.markAllNotifRead()">'+t('notif.markAllRead')+'</button>' : ''}
     </div>
     <div class="card" style="padding:0">
-      ${notifs.length > 0 ? notifs.map(n => '<div style="display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);'+(n.isRead?'':'background:rgba(21,101,192,0.04)')+';cursor:pointer" onclick="Pages.readNotif(\''+n.id+'\',\''+(n.requestId||'')+'\')"><div style="width:8px;height:8px;border-radius:50%;margin-top:6px;flex-shrink:0;background:'+(n.isRead?'transparent':'var(--primary)')+'"></div><div style="flex:1;min-width:0"><p class="fw-600" style="font-size:14px">'+Utils.escapeHtml(n.title)+'</p><p class="text-secondary" style="font-size:13px;margin-top:2px">'+Utils.escapeHtml(n.message)+'</p>'+(n.requestRef?'<span class="font-mono text-primary" style="font-size:12px">'+n.requestRef+'</span>':'')+'<p class="text-muted" style="font-size:12px;margin-top:4px">'+Utils.timeAgo(n.createdAt)+'</p></div></div>').join('') : '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg><p>'+t('notif.none')+'</p></div>'}
+      ${notifs.length > 0 ? notifs.map(n => '<div style="display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);'+(n.is_read?'':'background:rgba(21,101,192,0.04)')+';cursor:pointer" onclick="Pages.readNotif(\''+n.id+'\',\''+(n.requestId||'')+'\')"><div style="width:8px;height:8px;border-radius:50%;margin-top:6px;flex-shrink:0;background:'+(n.is_read?'transparent':'var(--primary)')+'"></div><div style="flex:1;min-width:0"><p class="fw-600" style="font-size:14px">'+Utils.escapeHtml(n.title)+'</p><p class="text-secondary" style="font-size:13px;margin-top:2px">'+Utils.escapeHtml(n.message)+'</p>'+(n.requestRef?'<span class="font-mono text-primary" style="font-size:12px">'+n.requestRef+'</span>':'')+'<p class="text-muted" style="font-size:12px;margin-top:4px">'+Utils.timeAgo(n.createdAt)+'</p></div></div>').join('') : '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg><p>'+t('notif.none')+'</p></div>'}
     </div>`;
   },
 
@@ -584,17 +589,17 @@ const Pages = {
 
       <div class="card mb-3">
         <div class="flex items-center gap-3 mb-3">
-          <div class="user-avatar" style="width:56px;height:56px;font-size:20px">${(user.firstName||'?')[0]}${(user.lastName||'?')[0]}</div>
+          <div class="user-avatar" style="width:56px;height:56px;font-size:20px">${((user.first_name||user.firstName||'')||'?')[0]}${((user.last_name||user.lastName||'')||'?')[0]}</div>
           <div>
-            <p class="fw-600" style="font-size:18px">${Utils.escapeHtml(user.firstName)} ${Utils.escapeHtml(user.lastName)}</p>
+            <p class="fw-600" style="font-size:18px">${Utils.escapeHtml((user.first_name||user.firstName||''))} ${Utils.escapeHtml((user.last_name||user.lastName||''))}</p>
             <p class="text-muted" style="font-size:13px">${Utils.escapeHtml(user.email)}</p>
             <p class="text-muted" style="font-size:13px">${Utils.escapeHtml(user.matricule||'')} ${user.department ? '- '+Utils.escapeHtml(user.department) : ''}</p>
           </div>
         </div>
         <form onsubmit="return Pages.handleUpdateProfile(event)">
           <div class="form-row">
-            <div class="form-group"><label class="form-label">${t('auth.firstName')}</label><input type="text" class="form-input" id="prof-fn" value="${Utils.escapeHtml(user.firstName||'')}"></div>
-            <div class="form-group"><label class="form-label">${t('auth.lastName')}</label><input type="text" class="form-input" id="prof-ln" value="${Utils.escapeHtml(user.lastName||'')}"></div>
+            <div class="form-group"><label class="form-label">${t('auth.firstName')}</label><input type="text" class="form-input" id="prof-fn" value="${Utils.escapeHtml((user.first_name||user.firstName||'')||'')}"></div>
+            <div class="form-group"><label class="form-label">${t('auth.lastName')}</label><input type="text" class="form-input" id="prof-ln" value="${Utils.escapeHtml((user.last_name||user.lastName||'')||'')}"></div>
           </div>
           <div class="form-group"><label class="form-label">${t('auth.phone')}</label><input type="tel" class="form-input" id="prof-phone" value="${Utils.escapeHtml(user.phone||'')}"></div>
           <div class="form-group"><label class="form-label">${t('auth.department')}</label><input type="text" class="form-input" id="prof-dept" value="${Utils.escapeHtml(user.department||'')}" list="prof-dept-list"><datalist id="prof-dept-list">${CONFIG.DEPARTMENTS.map(d=>'<option value="'+d.name+' ('+d.code+')">').join('')}</datalist></div>
@@ -623,11 +628,11 @@ const Pages = {
     </div>`;
   },
 
-  handleUpdateProfile(e) {
+  async handleUpdateProfile(e) {
     e.preventDefault();
-    Auth.updateProfile({
-      firstName: document.getElementById('prof-fn').value,
-      lastName: document.getElementById('prof-ln').value,
+    await Auth.updateProfile({
+      first_name: document.getElementById('prof-fn').value,
+      last_name: document.getElementById('prof-ln').value,
       phone: document.getElementById('prof-phone').value,
       department: document.getElementById('prof-dept').value,
       program: document.getElementById('prof-prog').value,
@@ -637,7 +642,7 @@ const Pages = {
     return false;
   },
 
-  handleChangePassword(e) {
+  async handleChangePassword(e) {
     e.preventDefault();
     const current = document.getElementById('pwd-current').value;
     const newPwd = document.getElementById('pwd-new').value;
@@ -645,10 +650,10 @@ const Pages = {
     if (newPwd !== confirm) { Utils.toast('Les mots de passe ne correspondent pas', 'error'); return false; }
     if (newPwd.length < 8) { Utils.toast('Le mot de passe doit contenir au moins 8 caracteres', 'error'); return false; }
     const user = Auth.getUser();
-    const users = Auth.getAllUsers();
+    const users = await Auth.getAllUsers();
     const u = users.find(x => x.id === user.id);
     if (!u || u.password !== current) { Utils.toast('Mot de passe actuel incorrect', 'error'); return false; }
-    Auth.updateUser(user.id, { password: newPwd });
+    await Auth.updateUser(user.id, { password: newPwd });
     Utils.toast('Mot de passe modifie avec succes', 'success');
     document.getElementById('pwd-current').value = '';
     document.getElementById('pwd-new').value = '';
@@ -656,14 +661,14 @@ const Pages = {
     return false;
   },
 
-  handleDeleteAccount() {
+  async handleDeleteAccount() {
     const pw = prompt('Entrez votre mot de passe pour confirmer la suppression definitive de votre compte :');
     if (!pw) return;
     const user = Auth.getUser();
-    const users = Auth.getAllUsers();
+    const users = await Auth.getAllUsers();
     const u = users.find(x => x.id === user.id);
     if (!u || u.password !== pw) { Utils.toast('Mot de passe incorrect', 'error'); return; }
-    Auth.deleteUser(user.id);
+    await Auth.deleteUser(user.id);
     Auth.logout();
     Utils.toast('Votre compte a ete supprime', 'success');
     location.hash = '#/';

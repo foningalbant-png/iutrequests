@@ -1,310 +1,315 @@
 /* ============================================
    IUTRequests - Authentification & Donnees
-   Fichier partage entre les 3 espaces
+   Version Supabase (donnees en ligne)
    ============================================ */
 
-(function() {
-  const CURRENT_VERSION = '6';
-  if (localStorage.getItem('iut-version') !== CURRENT_VERSION) {
-    localStorage.removeItem('iut-users');
-    localStorage.removeItem('iut-user');
-    localStorage.removeItem('iut-requests');
-    localStorage.removeItem('iut-notifications');
-    localStorage.removeItem('iut-audit');
-    localStorage.removeItem('iut-depts');
-    localStorage.removeItem('iut-progs');
-    localStorage.removeItem('iut-cats');
-    localStorage.setItem('iut-version', CURRENT_VERSION);
-  }
-})();
+/* --- Client Supabase --- */
+const SUPABASE_URL = CONFIG.SUPABASE_URL;
+const SUPABASE_KEY = CONFIG.SUPABASE_ANON_KEY;
+
+const SB = {
+  async query(table, method, options) {
+    let url = SUPABASE_URL + '/rest/v1/' + table;
+    const headers = {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': method === 'POST' ? 'return=representation' : 'return=representation'
+    };
+
+    if (method === 'GET') {
+      if (options?.filter) url += '?' + options.filter;
+      else url += '?select=*';
+      if (options?.order) url += '&order=' + options.order;
+      if (options?.limit) url += '&limit=' + options.limit;
+    }
+
+    if (method === 'DELETE') {
+      url += '?' + (options?.filter || '');
+    }
+
+    if (method === 'PATCH') {
+      url += '?' + (options?.filter || '');
+    }
+
+    try {
+      const res = await fetch(url, {
+        method: method,
+        headers: headers,
+        body: (method === 'POST' || method === 'PATCH') ? JSON.stringify(options?.body) : undefined
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        console.error('Supabase error:', err);
+        return null;
+      }
+      if (method === 'DELETE') return true;
+      return await res.json();
+    } catch (e) {
+      console.error('Supabase fetch error:', e);
+      return null;
+    }
+  },
+
+  async select(table, filter, order) { return await this.query(table, 'GET', { filter: filter ? 'select=*&' + filter : 'select=*', order: order || 'created_at.desc' }) || []; },
+  async insert(table, data) { const r = await this.query(table, 'POST', { body: data }); return r ? (Array.isArray(r) ? r[0] : r) : null; },
+  async update(table, filter, data) { return await this.query(table, 'PATCH', { filter, body: data }); },
+  async delete(table, filter) { return await this.query(table, 'DELETE', { filter }); },
+};
+
+/* --- Cache local pour performance --- */
+let _currentUser = JSON.parse(localStorage.getItem('iut-user') || 'null');
 
 const Auth = {
-  getUser() {
-    const d = localStorage.getItem('iut-user');
-    return d ? JSON.parse(d) : null;
-  },
-  isLoggedIn() { return !!this.getUser(); },
+  getUser() { return _currentUser; },
+  isLoggedIn() { return !!_currentUser; },
 
-  login(email, password) {
-    const users = this.getAllUsers();
-    const user = users.find(u => u.email === email && u.password === password && u.role === 'STUDENT');
-    if (!user) return { success: false, message: 'Identifiants incorrects ou compte non etudiant' };
-    if (!user.isActive) return { success: false, message: 'Compte desactive' };
-    const { password: _, ...safe } = user;
-    localStorage.setItem('iut-user', JSON.stringify(safe));
-    this.addAudit('CONNEXION', 'Etudiant: ' + user.firstName + ' ' + user.lastName);
-    return { success: true, user: safe };
+  async login(email, password) {
+    const users = await SB.select('profiles', 'email=eq.' + encodeURIComponent(email) + '&password=eq.' + encodeURIComponent(password) + '&role=eq.STUDENT');
+    if (!users || users.length === 0) return { success: false, message: 'Identifiants incorrects' };
+    const user = users[0];
+    if (!user.is_active) return { success: false, message: 'Compte desactive' };
+    _currentUser = user;
+    localStorage.setItem('iut-user', JSON.stringify(user));
+    this.addAudit('CONNEXION', 'Etudiant: ' + user.first_name + ' ' + user.last_name);
+    return { success: true, user };
   },
 
-  loginAdmin(email, password) {
-    const users = this.getAllUsers();
-    const user = users.find(u => u.email === email && u.password === password && u.role === 'ADMIN' && u.isActive);
-    if (!user) return { success: false, message: 'Identifiants administrateur incorrects.' };
-    const { password: _, ...safe } = user;
-    localStorage.setItem('iut-user', JSON.stringify(safe));
-    this.addAudit('CONNEXION', 'Admin: ' + user.firstName + ' ' + user.lastName);
-    return { success: true, user: safe };
+  async loginAdmin(email, password) {
+    const users = await SB.select('profiles', 'email=eq.' + encodeURIComponent(email) + '&password=eq.' + encodeURIComponent(password) + '&role=eq.ADMIN&is_active=eq.true');
+    if (!users || users.length === 0) return { success: false, message: 'Identifiants administrateur incorrects.' };
+    _currentUser = users[0];
+    localStorage.setItem('iut-user', JSON.stringify(users[0]));
+    this.addAudit('CONNEXION', 'Admin: ' + users[0].first_name + ' ' + users[0].last_name);
+    return { success: true, user: users[0] };
   },
 
-  loginSuperAdmin(email, password) {
-    const users = this.getAllUsers();
-    const user = users.find(u => u.email === email && u.password === password && u.role === 'SUPER_ADMIN');
-    if (!user) return { success: false, message: 'Identifiants Super Administrateur incorrects' };
-    const { password: _, ...safe } = user;
-    localStorage.setItem('iut-user', JSON.stringify(safe));
-    this.addAudit('CONNEXION', 'Super Admin: ' + user.firstName + ' ' + user.lastName);
-    return { success: true, user: safe };
+  async loginSuperAdmin(email, password) {
+    const users = await SB.select('profiles', 'email=eq.' + encodeURIComponent(email) + '&password=eq.' + encodeURIComponent(password) + '&role=eq.SUPER_ADMIN');
+    if (!users || users.length === 0) return { success: false, message: 'Identifiants Super Administrateur incorrects' };
+    _currentUser = users[0];
+    localStorage.setItem('iut-user', JSON.stringify(users[0]));
+    this.addAudit('CONNEXION', 'Super Admin: ' + users[0].first_name);
+    return { success: true, user: users[0] };
   },
 
-  register(data) {
-    const users = this.getAllUsers();
-    if (users.find(u => u.email === data.email))
-      return { success: false, message: 'Cette adresse e-mail est deja utilisee. Connectez-vous ou reinitialiser votre mot de passe.' };
-    if (data.matricule && users.find(u => u.matricule === data.matricule))
-      return { success: false, message: 'Ce matricule est deja enregistre.' };
-    const user = {
-      id: 'usr-' + Date.now(), ...data, role: 'STUDENT', isActive: true,
-      emailVerified: true, photoUrl: null, createdAt: new Date().toISOString(),
-    };
-    users.push(user);
-    localStorage.setItem('iut-users', JSON.stringify(users));
-    const { password: _, ...safe } = user;
-    localStorage.setItem('iut-user', JSON.stringify(safe));
-    this.addAudit('INSCRIPTION', 'Etudiant: ' + data.firstName + ' ' + data.lastName + ' (' + data.matricule + ')');
-    return { success: true, user: safe };
+  async register(data) {
+    const existing = await SB.select('profiles', 'email=eq.' + encodeURIComponent(data.email));
+    if (existing && existing.length > 0) return { success: false, message: 'Cette adresse e-mail est deja utilisee.' };
+    if (data.matricule) {
+      const existMat = await SB.select('profiles', 'matricule=eq.' + encodeURIComponent(data.matricule));
+      if (existMat && existMat.length > 0) return { success: false, message: 'Ce matricule est deja enregistre.' };
+    }
+    const user = await SB.insert('profiles', {
+      email: data.email, password: data.password,
+      first_name: data.firstName, last_name: data.lastName,
+      phone: data.phone, matricule: data.matricule,
+      department: data.department, program: data.program,
+      level: data.level, role: 'STUDENT', is_active: true
+    });
+    if (!user) return { success: false, message: 'Erreur lors de l\'inscription.' };
+    _currentUser = user;
+    localStorage.setItem('iut-user', JSON.stringify(user));
+    this.addAudit('INSCRIPTION', 'Etudiant: ' + data.firstName + ' ' + data.lastName);
+    return { success: true, user };
   },
 
-  logout() { localStorage.removeItem('iut-user'); },
+  logout() { _currentUser = null; localStorage.removeItem('iut-user'); },
 
-  // Reinitialisation mot de passe
-  generateResetCode(email) {
-    const users = this.getAllUsers();
-    const user = users.find(u => u.email === email);
-    if (!user) return { success: false, message: 'Aucun compte associe a cette adresse.' };
+  async generateResetCode(email) {
+    const users = await SB.select('profiles', 'email=eq.' + encodeURIComponent(email));
+    if (!users || users.length === 0) return { success: false, message: 'Aucun compte associe a cette adresse.' };
     const code = String(Math.floor(100000 + Math.random() * 900000));
-    const idx = users.findIndex(u => u.id === user.id);
-    users[idx].resetCode = code;
-    users[idx].resetCodeExpiry = Date.now() + 600000; // 10 min
-    localStorage.setItem('iut-users', JSON.stringify(users));
-    return { success: true, code: code, userName: user.firstName };
+    return { success: true, code: code, userName: users[0].first_name, userId: users[0].id };
   },
 
-  verifyResetCode(email, code) {
-    const users = this.getAllUsers();
-    const user = users.find(u => u.email === email);
-    if (!user || user.resetCode !== code || Date.now() > (user.resetCodeExpiry || 0))
-      return { success: false, message: 'Code invalide ou expire.' };
-    return { success: true };
-  },
-
-  resetPassword(email, code, newPassword) {
-    const r = this.verifyResetCode(email, code);
-    if (!r.success) return r;
-    const users = this.getAllUsers();
-    const idx = users.findIndex(u => u.email === email);
-    if (idx < 0) return { success: false, message: 'Utilisateur non trouve.' };
-    users[idx].password = newPassword;
-    delete users[idx].resetCode;
-    delete users[idx].resetCodeExpiry;
-    localStorage.setItem('iut-users', JSON.stringify(users));
+  async resetPassword(email, newPassword) {
+    await SB.update('profiles', 'email=eq.' + encodeURIComponent(email), { password: newPassword });
     this.addAudit('REINITIALISATION_MDP', 'Pour: ' + email);
     return { success: true };
   },
 
-  updateProfile(updates) {
-    const user = this.getUser();
-    if (!user) return;
-    const updated = { ...user, ...updates };
-    localStorage.setItem('iut-user', JSON.stringify(updated));
-    const users = this.getAllUsers();
-    const idx = users.findIndex(u => u.id === user.id);
-    if (idx >= 0) { users[idx] = { ...users[idx], ...updates }; localStorage.setItem('iut-users', JSON.stringify(users)); }
-    return updated;
+  async updateProfile(updates) {
+    if (!_currentUser) return;
+    await SB.update('profiles', 'id=eq.' + _currentUser.id, updates);
+    _currentUser = { ..._currentUser, ...updates };
+    localStorage.setItem('iut-user', JSON.stringify(_currentUser));
+    return _currentUser;
   },
 
-  getAllUsers() {
-    let users = JSON.parse(localStorage.getItem('iut-users') || '[]');
-    const saEmail = 'pepinierecommercialeiut@gmail.com';
-    if (!users.find(u => u.email === saEmail && u.role === 'SUPER_ADMIN')) {
-      users = users.filter(u => u.role !== 'SUPER_ADMIN' || u.email !== saEmail);
-      users.push({
-        id: 'usr-sa-1', email: saEmail, password: '@iutrequet2026mmi2',
-        firstName: 'Super', lastName: 'Administrateur', phone: '',
-        role: 'SUPER_ADMIN', isActive: true, emailVerified: true,
-        createdAt: '2026-01-01T00:00:00Z'
-      });
-      localStorage.setItem('iut-users', JSON.stringify(users));
-    }
-    return users;
+  async getAllUsers() {
+    return await SB.select('profiles', null, 'created_at.desc') || [];
   },
 
-  getAdmins() { return this.getAllUsers().filter(u => u.role === 'ADMIN' && u.isActive); },
+  async getAdmins() {
+    return await SB.select('profiles', 'role=eq.ADMIN&is_active=eq.true') || [];
+  },
 
-  createAdmin(data) {
-    const users = this.getAllUsers();
-    if (users.find(u => u.email === data.email))
-      return { success: false, message: 'Cette adresse e-mail est deja utilisee' };
-    if (!data.password || data.password.length < 6)
-      return { success: false, message: 'Le mot de passe doit contenir au moins 6 caracteres' };
-    const admin = {
-      id: 'usr-' + Date.now(), ...data, role: 'ADMIN', isActive: true,
-      emailVerified: true, createdAt: new Date().toISOString(),
-    };
-    users.push(admin);
-    localStorage.setItem('iut-users', JSON.stringify(users));
-    this.addAudit('CREATION_ADMIN', 'Admin: ' + data.firstName + ' ' + data.lastName + ' (' + data.email + ')');
+  async createAdmin(data) {
+    const existing = await SB.select('profiles', 'email=eq.' + encodeURIComponent(data.email));
+    if (existing && existing.length > 0) return { success: false, message: 'Cette adresse e-mail est deja utilisee' };
+    if (!data.password || data.password.length < 6) return { success: false, message: 'Mot de passe requis (min. 6 caracteres)' };
+    const admin = await SB.insert('profiles', {
+      email: data.email, password: data.password,
+      first_name: data.firstName, last_name: data.lastName,
+      phone: data.phone, role: 'ADMIN', is_active: true
+    });
+    if (!admin) return { success: false, message: 'Erreur lors de la creation.' };
+    this.addAudit('CREATION_ADMIN', 'Admin: ' + data.firstName + ' ' + data.lastName);
     return { success: true, user: admin };
   },
 
-  updateUser(id, updates) {
-    const users = this.getAllUsers();
-    const idx = users.findIndex(u => u.id === id);
-    if (idx >= 0) {
-      users[idx] = { ...users[idx], ...updates };
-      localStorage.setItem('iut-users', JSON.stringify(users));
-      const current = this.getUser();
-      if (current && current.id === id) {
-        const { password: _, ...safe } = users[idx];
-        localStorage.setItem('iut-user', JSON.stringify(safe));
-      }
-      return users[idx];
+  async updateUser(id, updates) {
+    const dbUpdates = {};
+    if (updates.firstName !== undefined) dbUpdates.first_name = updates.firstName;
+    if (updates.lastName !== undefined) dbUpdates.last_name = updates.lastName;
+    if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
+    if (updates.email !== undefined) dbUpdates.email = updates.email;
+    if (updates.password !== undefined) dbUpdates.password = updates.password;
+    if (updates.role !== undefined) dbUpdates.role = updates.role;
+    if (updates.is_active !== undefined) dbUpdates.is_active = updates.is_active;
+    if (updates.department !== undefined) dbUpdates.department = updates.department;
+    if (updates.program !== undefined) dbUpdates.program = updates.program;
+    await SB.update('profiles', 'id=eq.' + id, dbUpdates);
+    if (_currentUser && _currentUser.id === id) {
+      _currentUser = { ..._currentUser, ...dbUpdates };
+      localStorage.setItem('iut-user', JSON.stringify(_currentUser));
     }
-    return null;
   },
 
-  deleteUser(id) {
-    const users = this.getAllUsers().filter(u => u.id !== id);
-    localStorage.setItem('iut-users', JSON.stringify(users));
+  async deleteUser(id) {
+    await SB.delete('profiles', 'id=eq.' + id);
   },
 
-  addAudit(action, details) {
-    const logs = JSON.parse(localStorage.getItem('iut-audit') || '[]');
+  async addAudit(action, details) {
     const u = this.getUser();
-    logs.unshift({ id: 'log-' + Date.now(), date: new Date().toISOString(), user: u ? u.firstName + ' ' + u.lastName : 'Systeme', userEmail: u?.email || '', action: action, details: details });
-    if (logs.length > 500) logs.length = 500;
-    localStorage.setItem('iut-audit', JSON.stringify(logs));
+    await SB.insert('audit_logs', {
+      user_name: u ? u.first_name + ' ' + u.last_name : 'Systeme',
+      user_email: u?.email || '', action: action, details: details
+    });
   },
 };
 
 /* --- Requetes --- */
 const RequestStore = {
-  getAll() { return JSON.parse(localStorage.getItem('iut-requests') || '[]'); },
-  getById(id) { return this.getAll().find(r => r.id === id); },
-  getByStudent(sid) { return this.getAll().filter(r => r.studentId === sid); },
+  async getAll() { return await SB.select('requests', null, 'created_at.desc') || []; },
+  async getById(id) { const r = await SB.select('requests', 'id=eq.' + id); return r && r.length > 0 ? r[0] : null; },
+  async getByStudent(sid) { return await SB.select('requests', 'student_id=eq.' + sid, 'created_at.desc') || []; },
 
-  create(data) {
-    const reqs = this.getAll();
-    const dept = data.department || 'TCO';
-    const deptCode = dept.match(/\(([A-Z]+)\)/)?.[1] || dept.substring(0, 3).toUpperCase();
+  async create(data) {
+    const all = await this.getAll();
+    const deptCode = (data.department || 'TCO').match(/\(([A-Z]+)\)/)?.[1] || (data.department || 'TCO').substring(0, 3).toUpperCase();
     const year = new Date().getFullYear();
     const prefix = 'IUT-' + year + '-' + deptCode;
-    const count = reqs.filter(r => r.referenceNumber && r.referenceNumber.startsWith(prefix)).length + 1;
+    const count = all.filter(r => r.reference_number && r.reference_number.startsWith(prefix)).length + 1;
     const ref = prefix + '-' + String(count).padStart(4, '0');
-    const req = {
-      id: 'req-' + Date.now(), referenceNumber: ref, ...data,
-      status: data.isDraft ? 'DRAFT' : 'SUBMITTED', priority: 'NORMALE',
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-      firstViewedAt: null, resolvedAt: null, closedAt: null,
-      reopenedCount: 0, reminderCount: 0, messages: [], satisfaction: null,
-      statusHistory: [{ status: data.isDraft ? 'DRAFT' : 'SUBMITTED', changedBy: data.studentName || 'Etudiant', reason: 'Creation de la requete', date: new Date().toISOString() }],
-    };
-    reqs.push(req);
-    localStorage.setItem('iut-requests', JSON.stringify(reqs));
-    if (!data.isDraft) {
-      NotifStore.create({ userId: data.studentId, type: 'REQUEST_CREATED', title: 'Requete soumise', message: 'Votre requete ' + ref + ' a ete soumise.', requestId: req.id, requestRef: ref });
+
+    const req = await SB.insert('requests', {
+      reference_number: ref, title: data.title, description: data.description,
+      status: data.isDraft ? 'DRAFT' : 'SUBMITTED', student_id: data.studentId,
+      student_name: data.studentName, student_email: data.studentEmail,
+      student_phone: data.studentPhone, student_matricule: data.studentMatricule,
+      department: data.department, program: data.program,
+      category_name: data.categoryName, priority: 'NORMALE',
+      file_names: data.fileNames || []
+    });
+    if (!req) return null;
+
+    await SB.insert('request_status_history', {
+      request_id: req.id, status: data.isDraft ? 'DRAFT' : 'SUBMITTED',
+      changed_by: data.studentName || 'Etudiant', reason: 'Creation de la requete'
+    });
+
+    if (!data.isDraft && data.studentId) {
+      await NotifStore.create({ user_id: data.studentId, type: 'REQUEST_CREATED', title: 'Requete soumise', message: 'Votre requete ' + ref + ' a ete soumise.', request_id: req.id, request_ref: ref });
     }
     Auth.addAudit('REQUETE_CREEE', ref + ' - ' + data.title);
     return req;
   },
 
-  update(id, updates) {
-    const reqs = this.getAll();
-    const idx = reqs.findIndex(r => r.id === id);
-    if (idx >= 0) { reqs[idx] = { ...reqs[idx], ...updates, updatedAt: new Date().toISOString() }; localStorage.setItem('iut-requests', JSON.stringify(reqs)); return reqs[idx]; }
-    return null;
+  async update(id, updates) {
+    await SB.update('requests', 'id=eq.' + id, { ...updates, updated_at: new Date().toISOString() });
+    return await this.getById(id);
   },
 
-  updateStatus(id, newStatus, reason, changedBy) {
-    const reqs = this.getAll();
-    const req = reqs.find(r => r.id === id);
+  async updateStatus(id, newStatus, reason, changedBy) {
+    const req = await this.getById(id);
     if (!req) return null;
-    req.status = newStatus;
-    req.updatedAt = new Date().toISOString();
-    if (newStatus === 'VALIDATED') req.resolvedAt = new Date().toISOString();
-    if (newStatus === 'CLOSED') req.closedAt = new Date().toISOString();
-    if (newStatus === 'REOPENED') req.reopenedCount = (req.reopenedCount || 0) + 1;
-    req.statusHistory = req.statusHistory || [];
-    req.statusHistory.unshift({ status: newStatus, changedBy, reason, date: new Date().toISOString() });
-    localStorage.setItem('iut-requests', JSON.stringify(reqs));
-    NotifStore.create({ userId: req.studentId, type: 'STATUS_CHANGED', title: 'Requete ' + (CONFIG.STATUSES[newStatus]?.fr || newStatus), message: 'Statut de ' + req.referenceNumber + ' : ' + (CONFIG.STATUSES[newStatus]?.fr || newStatus) + (reason ? '. Motif : ' + reason : ''), requestId: req.id, requestRef: req.referenceNumber });
-    Auth.addAudit('STATUT_MODIFIE', req.referenceNumber + ' -> ' + newStatus);
-    return req;
-  },
+    const updates = { status: newStatus, updated_at: new Date().toISOString() };
+    if (newStatus === 'VALIDATED') updates.resolved_at = new Date().toISOString();
+    if (newStatus === 'CLOSED') updates.closed_at = new Date().toISOString();
+    if (newStatus === 'REOPENED') updates.reopened_count = (req.reopened_count || 0) + 1;
+    await SB.update('requests', 'id=eq.' + id, updates);
 
-  delete(id) {
-    const req = this.getById(id);
-    const reqs = this.getAll().filter(r => r.id !== id);
-    localStorage.setItem('iut-requests', JSON.stringify(reqs));
-    if (req) Auth.addAudit('REQUETE_SUPPRIMEE', req.referenceNumber);
-  },
+    await SB.insert('request_status_history', { request_id: id, status: newStatus, old_status: req.status, changed_by: changedBy, reason: reason });
 
-  addMessage(reqId, senderId, senderName, senderRole, content) {
-    const reqs = this.getAll();
-    const req = reqs.find(r => r.id === reqId);
-    if (!req) return;
-    req.messages = req.messages || [];
-    req.messages.push({ id: 'msg-' + Date.now(), senderId, senderName, senderRole, content, createdAt: new Date().toISOString() });
-    req.updatedAt = new Date().toISOString();
-    localStorage.setItem('iut-requests', JSON.stringify(reqs));
-    if (senderRole === 'ADMIN') {
-      NotifStore.create({ userId: req.studentId, type: 'ADMIN_RESPONSE', title: 'Message de l\'administration', message: 'Nouveau message sur ' + req.referenceNumber, requestId: req.id, requestRef: req.referenceNumber });
+    if (req.student_id) {
+      await NotifStore.create({ user_id: req.student_id, type: 'STATUS_CHANGED', title: 'Requete ' + (CONFIG.STATUSES[newStatus]?.fr || newStatus), message: 'Statut de ' + req.reference_number + ' : ' + (CONFIG.STATUSES[newStatus]?.fr || newStatus) + (reason ? '. Motif : ' + reason : ''), request_id: id, request_ref: req.reference_number });
     }
-    return req;
+    Auth.addAudit('STATUT_MODIFIE', req.reference_number + ' -> ' + newStatus);
+    return await this.getById(id);
   },
 
-  remind(reqId) {
-    const reqs = this.getAll();
-    const req = reqs.find(r => r.id === reqId);
-    if (!req) return;
-    req.reminderCount = (req.reminderCount || 0) + 1;
-    req.lastReminderAt = new Date().toISOString();
-    req.statusHistory = req.statusHistory || [];
-    req.statusHistory.unshift({ status: 'RELANCE', changedBy: req.studentName, reason: 'Relance par l\'etudiant (relance n.' + req.reminderCount + ')', date: new Date().toISOString() });
-    localStorage.setItem('iut-requests', JSON.stringify(reqs));
-    Auth.addAudit('RELANCE', req.referenceNumber);
-    return req;
+  async delete(id) {
+    const req = await this.getById(id);
+    await SB.delete('request_status_history', 'request_id=eq.' + id);
+    await SB.delete('request_messages', 'request_id=eq.' + id);
+    await SB.delete('notifications', 'request_id=eq.' + id);
+    await SB.delete('requests', 'id=eq.' + id);
+    if (req) Auth.addAudit('REQUETE_SUPPRIMEE', req.reference_number);
   },
 
-  setSatisfaction(reqId, score, comment) {
-    const reqs = this.getAll();
-    const req = reqs.find(r => r.id === reqId);
+  async getHistory(requestId) {
+    return await SB.select('request_status_history', 'request_id=eq.' + requestId, 'created_at.desc') || [];
+  },
+
+  async getMessages(requestId) {
+    return await SB.select('request_messages', 'request_id=eq.' + requestId, 'created_at.asc') || [];
+  },
+
+  async addMessage(reqId, senderId, senderName, senderRole, content) {
+    await SB.insert('request_messages', { request_id: reqId, sender_id: senderId, sender_name: senderName, sender_role: senderRole, content: content });
+    await SB.update('requests', 'id=eq.' + reqId, { updated_at: new Date().toISOString() });
+
+    if (senderRole === 'ADMIN') {
+      const req = await this.getById(reqId);
+      if (req && req.student_id) {
+        await NotifStore.create({ user_id: req.student_id, type: 'ADMIN_RESPONSE', title: 'Message de l\'administration', message: 'Nouveau message sur ' + req.reference_number, request_id: reqId, request_ref: req.reference_number });
+      }
+    }
+  },
+
+  async remind(reqId) {
+    const req = await this.getById(reqId);
     if (!req) return;
-    req.satisfaction = { score, comment, date: new Date().toISOString() };
-    localStorage.setItem('iut-requests', JSON.stringify(reqs));
+    await SB.update('requests', 'id=eq.' + reqId, { reminder_count: (req.reminder_count || 0) + 1, updated_at: new Date().toISOString() });
+    await SB.insert('request_status_history', { request_id: reqId, status: 'RELANCE', changed_by: req.student_name, reason: 'Relance par l\'etudiant (n.' + ((req.reminder_count || 0) + 1) + ')' });
+    Auth.addAudit('RELANCE', req.reference_number);
+  },
+
+  async setSatisfaction(reqId, score, comment) {
+    await SB.update('requests', 'id=eq.' + reqId, { satisfaction_score: score, satisfaction_comment: comment });
   },
 };
 
 /* --- Notifications --- */
 const NotifStore = {
-  getAll(userId) {
-    const all = JSON.parse(localStorage.getItem('iut-notifications') || '[]');
-    return userId ? all.filter(n => n.userId === userId) : all;
+  async getAll(userId) {
+    if (userId) return await SB.select('notifications', 'user_id=eq.' + userId, 'created_at.desc') || [];
+    return await SB.select('notifications', null, 'created_at.desc') || [];
   },
-  getUnreadCount(userId) { return this.getAll(userId).filter(n => !n.isRead).length; },
-  create(data) {
-    const ns = JSON.parse(localStorage.getItem('iut-notifications') || '[]');
-    ns.unshift({ id: 'notif-' + Date.now(), ...data, isRead: false, createdAt: new Date().toISOString() });
-    localStorage.setItem('iut-notifications', JSON.stringify(ns));
+  async getUnreadCount(userId) {
+    const notifs = await this.getAll(userId);
+    return notifs.filter(n => !n.is_read).length;
   },
-  markAsRead(id) {
-    const ns = JSON.parse(localStorage.getItem('iut-notifications') || '[]');
-    const n = ns.find(x => x.id === id);
-    if (n) { n.isRead = true; localStorage.setItem('iut-notifications', JSON.stringify(ns)); }
+  async create(data) {
+    await SB.insert('notifications', { ...data, is_read: false });
   },
-  markAllAsRead(userId) {
-    const ns = JSON.parse(localStorage.getItem('iut-notifications') || '[]');
-    ns.forEach(n => { if (n.userId === userId && !n.isRead) n.isRead = true; });
-    localStorage.setItem('iut-notifications', JSON.stringify(ns));
+  async markAsRead(id) {
+    await SB.update('notifications', 'id=eq.' + id, { is_read: true });
+  },
+  async markAllAsRead(userId) {
+    await SB.update('notifications', 'user_id=eq.' + userId + '&is_read=eq.false', { is_read: true });
   },
 };
 
