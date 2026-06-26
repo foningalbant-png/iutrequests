@@ -85,7 +85,7 @@ const App = {
 
   renderHeader(user, isPublic) {
     const t = I18N.t.bind(I18N);
-    const unreadCount = user ? NotifStore.getUnreadCount(user.id) : 0;
+    const unreadCount = 0;
 
     return `
     <header class="header">

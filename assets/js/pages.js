@@ -165,6 +165,7 @@ const Pages = {
   },
 
   _forgotEmail: '',
+  _resetCode: '',
 
   async handleForgotStep1(e) {
     e.preventDefault();
@@ -172,6 +173,7 @@ const Pages = {
     const result = await Auth.generateResetCode(email);
     if (!result.success) { Utils.toast(result.message, 'error'); return false; }
     this._forgotEmail = email;
+    this._resetCode = result.code;
     document.getElementById('forgot-step1').classList.add('hidden');
     document.getElementById('forgot-step2').classList.remove('hidden');
     document.getElementById('forgot-code-display').textContent = 'Code envoye a ' + email + ' : ' + result.code + ' (valable 10 minutes)';
@@ -546,7 +548,7 @@ const Pages = {
           </div>
         </div>
 
-        ${(req.statusHistory||[]||[]).length > 0 ? '<div class="card"><h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Historique des statuts</h4><div class="timeline">'+req.statusHistory||[].map(sh => '<div class="timeline-item"><div class="timeline-content">'+Utils.statusBadge(sh.status)+(sh.reason?'<p style="font-size:12px;color:var(--text-muted);margin-top:4px">'+Utils.escapeHtml(sh.reason)+'</p>':'')+'<p class="timeline-date">'+Utils.escapeHtml(sh.changedBy)+' - '+Utils.formatDateTime(sh.date)+'</p></div></div>').join('')+'</div></div>' : ''}
+        ${(req.statusHistory||[]).length > 0 ? '<div class="card"><h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Historique des statuts</h4><div class="timeline">'+(req.statusHistory||[]).map(sh => '<div class="timeline-item"><div class="timeline-content">'+Utils.statusBadge(sh.status)+(sh.reason?'<p style="font-size:12px;color:var(--text-muted);margin-top:4px">'+Utils.escapeHtml(sh.reason)+'</p>':'')+'<p class="timeline-date">'+Utils.escapeHtml(sh.changed_by||sh.changedBy||'')+' - '+Utils.formatDateTime(sh.created_at||sh.date)+'</p></div></div>').join('')+'</div></div>' : ''}
       </div>
     </div>`;
   },
