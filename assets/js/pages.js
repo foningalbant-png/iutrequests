@@ -397,7 +397,11 @@ const Pages = {
     return `
     <div class="page-header">
       <h1 class="page-title">${t('req.my')}</h1>
-      <a href="#/requests/new" class="btn btn-primary"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${t('nav.newRequest')}</a>
+      <div class="flex gap-1">
+        <button class="btn btn-outline btn-sm" onclick="Pages.exportRequests('csv')" title="Exporter en Excel/CSV"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="Pages.exportRequests('pdf')" title="Exporter en PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> PDF</button>
+        <a href="#/requests/new" class="btn btn-primary btn-sm"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${t('nav.newRequest')}</a>
+      </div>
     </div>
 
     <div class="card">
@@ -693,11 +697,11 @@ const Pages = {
       ${unread > 0 ? '<button class="btn btn-outline btn-sm" onclick="Pages.markAllNotifRead()">'+t('notif.markAllRead')+'</button>' : ''}
     </div>
     <div class="card" style="padding:0">
-      ${notifs.length > 0 ? notifs.map(n => '<div style="display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);'+(n.is_read?'':'background:rgba(21,101,192,0.04)')+';cursor:pointer" onclick="Pages.readNotif(\''+n.id+'\',\''+(n.requestId||'')+'\')"><div style="width:8px;height:8px;border-radius:50%;margin-top:6px;flex-shrink:0;background:'+(n.is_read?'transparent':'var(--primary)')+'"></div><div style="flex:1;min-width:0"><p class="fw-600" style="font-size:14px">'+Utils.escapeHtml(n.title)+'</p><p class="text-secondary" style="font-size:13px;margin-top:2px">'+Utils.escapeHtml(n.message)+'</p>'+(n.requestRef?'<span class="font-mono text-primary" style="font-size:12px">'+n.requestRef+'</span>':'')+'<p class="text-muted" style="font-size:12px;margin-top:4px">'+Utils.timeAgo(n.createdAt)+'</p></div></div>').join('') : '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg><p>'+t('notif.none')+'</p></div>'}
+      ${notifs.length > 0 ? notifs.map(n => '<div style="display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);'+(n.is_read?'':'background:rgba(21,101,192,0.04)')+';cursor:pointer" onclick="Pages.readNotif(\''+n.id+'\',\''+((n.request_id||n.requestId||'')||'')+'\')"><div style="width:8px;height:8px;border-radius:50%;margin-top:6px;flex-shrink:0;background:'+(n.is_read?'transparent':'var(--primary)')+'"></div><div style="flex:1;min-width:0"><p class="fw-600" style="font-size:14px">'+Utils.escapeHtml(n.title)+'</p><p class="text-secondary" style="font-size:13px;margin-top:2px">'+Utils.escapeHtml(n.message)+'</p>'+((n.request_ref||n.requestRef||'')?'<span class="font-mono text-primary" style="font-size:12px">'+(n.request_ref||n.requestRef||'')+'</span>':'')+'<p class="text-muted" style="font-size:12px;margin-top:4px">'+Utils.timeAgo((n.created_at||n.createdAt))+'</p></div></div>').join('') : '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg><p>'+t('notif.none')+'</p></div>'}
     </div>`;
   },
 
-  readNotif(id, requestId) { NotifStore.markAsRead(id); if (requestId) location.hash = '#/requests/'+requestId; else App.route(); },
+  readNotif(id, requestId) { NotifStore.markAsRead(id); if (requestId && requestId !== 'undefined') location.hash = '#/requests/'+requestId; else App.route(); },
   markAllNotifRead() { const u = Auth.getUser(); NotifStore.markAllAsRead(u.id); App.route(); },
 
   // =====================================================
@@ -798,10 +802,48 @@ const Pages = {
   },
 
   // =====================================================
+  //  EXPORT EXCEL / PDF
+  // =====================================================
+  async exportRequests(format) {
+    const user = Auth.getUser();
+    const requests = await RequestStore.getByStudent(user.id);
+    if (requests.length === 0) { Utils.toast('Aucune requete a exporter', 'error'); return; }
+
+    if (format === 'csv') {
+      let csv = 'Reference;Objet;Categorie;Statut;Priorite;Departement;Filiere;Date\n';
+      requests.forEach(r => {
+        csv += (r.reference_number||'')+';'+(r.title||'').replace(/;/g,',')+';'+(r.category_name||'')+';'+(CONFIG.STATUSES[r.status]?.fr||r.status)+';'+(r.priority||'NORMALE')+';'+(r.department||'')+';'+(r.program||'')+';'+Utils.formatDate(r.created_at)+'\n';
+      });
+      const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'IUTRequests_export_'+new Date().toISOString().split('T')[0]+'.csv';
+      link.click();
+      Utils.toast('Export CSV telecharge', 'success');
+    }
+
+    if (format === 'pdf') {
+      const win = window.open('','_blank');
+      win.document.write('<html><head><title>IUTRequests - Export</title><style>body{font-family:Arial,sans-serif;padding:20px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ddd;padding:8px;text-align:left;font-size:12px}th{background:#1565C0;color:white}h1{color:#1565C0;font-size:18px}p{color:#666;font-size:13px}</style></head><body>');
+      win.document.write('<h1>IUTRequests - Mes Requetes</h1>');
+      win.document.write('<p>Etudiant : '+(user.first_name||'')+' '+(user.last_name||'')+' | Matricule : '+(user.matricule||'')+' | Export du '+new Date().toLocaleDateString('fr-FR')+'</p>');
+      win.document.write('<table><tr><th>Reference</th><th>Objet</th><th>Categorie</th><th>Statut</th><th>Priorite</th><th>Date</th></tr>');
+      requests.forEach(r => {
+        win.document.write('<tr><td>'+(r.reference_number||'')+'</td><td>'+(r.title||'')+'</td><td>'+(r.category_name||'')+'</td><td>'+(CONFIG.STATUSES[r.status]?.fr||r.status)+'</td><td>'+(r.priority||'NORMALE')+'</td><td>'+Utils.formatDate(r.created_at)+'</td></tr>');
+      });
+      win.document.write('</table><p style="margin-top:20px;font-size:11px">Institut Universitaire de Technologie de Douala - IUTRequests</p></body></html>');
+      win.document.close();
+      win.print();
+      Utils.toast('Export PDF genere', 'success');
+    }
+  },
+
+  // =====================================================
   //  FAQ
   // =====================================================
   faq() {
-    const faqs = [
+    const customFaqs = JSON.parse(localStorage.getItem('iut-faqs') || '[]');
+    const faqs = customFaqs.length > 0 ? customFaqs : [
       { q: 'Comment creer un compte sur IUTRequests ?', a: 'Cliquez sur "Inscription" dans le menu, renseignez vos informations personnelles (nom, prenom, matricule, departement, filiere) et definissez un mot de passe. Votre compte sera immediatement actif.' },
       { q: 'Quels types de requetes puis-je soumettre ?', a: 'La plateforme accepte 18 types de requetes : reclamation de note, attestation de scolarite, convention de stage, justification d\'absence, et bien d\'autres. Consultez la liste complete sur la page d\'accueil.' },
       { q: 'Comment suivre l\'avancement de ma requete ?', a: 'Apres connexion, accedez a votre tableau de bord. Chaque requete affiche son statut actuel. Vous recevez egalement une notification a chaque changement de statut.' },
