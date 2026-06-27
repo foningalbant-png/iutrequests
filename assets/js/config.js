@@ -10,6 +10,12 @@ const CONFIG = {
   // Mode demo (utilise localStorage au lieu de Supabase)
   DEMO_MODE: false,
 
+  // EmailJS - Pour l'envoi d'emails (reinitialisation mot de passe, notifications)
+  // Creez un compte sur emailjs.com et remplissez ces valeurs
+  EMAILJS_SERVICE_ID: '',
+  EMAILJS_TEMPLATE_ID: '',
+  EMAILJS_PUBLIC_KEY: '',
+
   // Application
   APP_NAME: 'IUTRequests',
   INSTITUTION: 'Institut Universitaire de Technologie de Douala',

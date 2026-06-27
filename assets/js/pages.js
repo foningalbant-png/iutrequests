@@ -128,8 +128,8 @@ const Pages = {
           <div class="card" style="text-align:center">
             <div style="width:48px;height:48px;border-radius:12px;background:#E8F5E9;display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
             <h4>WhatsApp</h4>
-            <p style="font-size:14px;color:var(--text-secondary)">+237 6XX XXX XXX</p>
-            <a href="https://wa.me/237600000000" target="_blank" class="btn btn-outline btn-sm mt-2" style="color:#2E7D32;border-color:#2E7D32">Ecrire sur WhatsApp</a>
+            <p style="font-size:14px;color:var(--text-secondary)">+237 655 741 214</p>
+            <a href="https://wa.me/237655741214" target="_blank" class="btn btn-outline btn-sm mt-2" style="color:#2E7D32;border-color:#2E7D32">Ecrire sur WhatsApp</a>
           </div>
           <div class="card" style="text-align:center">
             <div style="width:48px;height:48px;border-radius:12px;background:var(--yellow-light);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--yellow-dark)" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
@@ -232,7 +232,11 @@ const Pages = {
     this._resetCode = result.code;
     document.getElementById('forgot-step1').classList.add('hidden');
     document.getElementById('forgot-step2').classList.remove('hidden');
-    document.getElementById('forgot-code-display').textContent = 'Code envoye a ' + email + ' : ' + result.code + ' (valable 10 minutes)';
+    if (result.emailSent) {
+      document.getElementById('forgot-code-display').textContent = 'Un code de validation a ete envoye a ' + email + '. Verifiez votre boite de reception (et vos spams).';
+    } else {
+      document.getElementById('forgot-code-display').textContent = 'Code de validation : ' + result.code + ' (EmailJS non configure - le code est affiche ici temporairement)';
+    }
     return false;
   },
 
@@ -273,7 +277,7 @@ const Pages = {
             </div>
             <div class="form-group"><label class="form-label">${t('auth.email')} *</label><input type="email" class="form-input" id="reg-email" required placeholder="votre@email.com"></div>
             <div class="form-row">
-              <div class="form-group"><label class="form-label">${t('auth.phone')} *</label><input type="tel" class="form-input" id="reg-phone" required placeholder="+237 6XX XXX XXX"></div>
+              <div class="form-group"><label class="form-label">${t('auth.phone')} *</label><input type="tel" class="form-input" id="reg-phone" required placeholder="+237 655 741 214"></div>
               <div class="form-group"><label class="form-label">${t('auth.matricule')} *</label><input type="text" class="form-input" id="reg-matricule" required></div>
             </div>
             <div class="form-group">
@@ -455,12 +459,23 @@ const Pages = {
               <input type="text" class="form-input" id="req-prog" value="${Utils.escapeHtml(user.program||'')}" placeholder="Votre filiere">
             </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">${t('req.selectCategory')} *</label>
-            <select class="form-select" id="req-category" required onchange="Pages.onCategoryChange(this.value)">
-              <option value="">-- ${t('req.selectCategory')} --</option>
-              ${catOptions}
-            </select>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">${t('req.selectCategory')} *</label>
+              <select class="form-select" id="req-category" required onchange="Pages.onCategoryChange(this.value)">
+                <option value="">-- ${t('req.selectCategory')} --</option>
+                ${catOptions}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Priorite</label>
+              <select class="form-select" id="req-priority">
+                <option value="NORMALE">Normale</option>
+                <option value="BASSE">Basse</option>
+                <option value="HAUTE">Haute</option>
+                <option value="URGENTE">Urgente</option>
+              </select>
+            </div>
           </div>
           <div id="category-info"></div>
           <div class="form-group">
@@ -525,6 +540,7 @@ const Pages = {
     const prog = document.getElementById('req-prog').value || user.program || '';
     const title = document.getElementById('req-title').value;
     const desc = document.getElementById('req-description').value;
+    const priority = document.getElementById('req-priority')?.value || 'NORMALE';
     if (!isDraft && (!catId || !title)) { Utils.toast('Veuillez remplir tous les champs obligatoires', 'error'); return; }
     const filesInput = document.getElementById('req-files');
     const files = filesInput && filesInput.files ? Array.from(filesInput.files) : [];
@@ -547,7 +563,7 @@ const Pages = {
       department: dept, program: prog, studentId: user.id,
       studentName: ((user.first_name||user.firstName||'')||'')+' '+((user.last_name||user.lastName||'')||''),
       studentEmail: user.email||'', studentPhone: user.phone||'', studentMatricule: user.matricule||'',
-      isDraft: isDraft, fileNames: fileNames, fileUrls: fileUrls,
+      isDraft: isDraft, fileNames: fileNames, fileUrls: fileUrls, priority: priority,
     });
     if (!request) { Utils.toast('Erreur lors de la soumission', 'error'); return; }
     Utils.toast(isDraft ? 'Brouillon enregistre' : 'Requete '+(request.reference_number||'')+' soumise avec succes !', 'success');
@@ -604,6 +620,7 @@ const Pages = {
             <div class="flex justify-between mb-1"><span class="text-muted">Categorie</span><span>${Utils.escapeHtml(req.category_name||'-')}</span></div>
             <div class="flex justify-between mb-1"><span class="text-muted">Departement</span><span>${Utils.escapeHtml(req.department||'-')}</span></div>
             ${req.program ? '<div class="flex justify-between mb-1"><span class="text-muted">Filiere</span><span>'+Utils.escapeHtml(req.program)+'</span></div>' : ''}
+            <div class="flex justify-between mb-1"><span class="text-muted">Priorite</span><span class="badge ${req.priority==='URGENTE'?'badge-rejected':req.priority==='HAUTE'?'badge-in-progress':req.priority==='BASSE'?'badge-closed':'badge-submitted'}">${req.priority||'NORMALE'}</span></div>
             <div class="flex justify-between mb-1"><span class="text-muted">Creee le</span><span style="font-size:12px">${Utils.formatDateTime(req.created_at)}</span></div>
             <div class="flex justify-between mb-1"><span class="text-muted">Consultee</span><span style="font-size:12px">${req.first_viewed_at ? Utils.formatDateTime(req.first_viewed_at) : '<span style="color:var(--yellow-dark)">Pas encore</span>'}</span></div>
             <div class="flex justify-between mb-1"><span class="text-muted">Relances</span><span>${req.reminder_count||0}</span></div>

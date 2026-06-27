@@ -135,11 +135,26 @@ const Auth = {
 
   logout() { _currentUser = null; localStorage.removeItem('iut-user'); },
 
+  async sendEmail(toEmail, userName, resetCode) {
+    if (CONFIG.EMAILJS_SERVICE_ID && CONFIG.EMAILJS_PUBLIC_KEY && typeof emailjs !== 'undefined') {
+      try {
+        await emailjs.send(CONFIG.EMAILJS_SERVICE_ID, CONFIG.EMAILJS_TEMPLATE_ID, {
+          to_email: toEmail,
+          user_name: userName,
+          reset_code: resetCode,
+        }, CONFIG.EMAILJS_PUBLIC_KEY);
+        return true;
+      } catch (e) { console.error('EmailJS error:', e); return false; }
+    }
+    return false;
+  },
+
   async generateResetCode(email) {
     const users = await SB.select('profiles', 'email=eq.' + encodeURIComponent(email));
     if (!users || users.length === 0) return { success: false, message: 'Aucun compte associe a cette adresse.' };
     const code = String(Math.floor(100000 + Math.random() * 900000));
-    return { success: true, code: code, userName: users[0].first_name, userId: users[0].id };
+    const emailSent = await this.sendEmail(email, users[0].first_name || '', code);
+    return { success: true, code: code, userName: users[0].first_name, userId: users[0].id, emailSent: emailSent };
   },
 
   async resetPassword(email, newPassword) {
@@ -229,7 +244,7 @@ const RequestStore = {
       student_name: data.studentName, student_email: data.studentEmail,
       student_phone: data.studentPhone, student_matricule: data.studentMatricule,
       department: data.department, program: data.program,
-      category_name: data.categoryName, priority: 'NORMALE',
+      category_name: data.categoryName, priority: data.priority || 'NORMALE',
       file_names: data.fileNames || [],
       file_urls: data.fileUrls ? JSON.stringify(data.fileUrls) : '[]'
     });
@@ -267,7 +282,13 @@ const RequestStore = {
     await SB.insert('request_status_history', { request_id: id, status: newStatus, old_status: req.status, changed_by: changedBy, reason: reason });
 
     if (req.student_id) {
-      await NotifStore.create({ user_id: req.student_id, type: 'STATUS_CHANGED', title: 'Requete ' + (CONFIG.STATUSES[newStatus]?.fr || newStatus), message: 'Statut de ' + req.reference_number + ' : ' + (CONFIG.STATUSES[newStatus]?.fr || newStatus) + (reason ? '. Motif : ' + reason : ''), request_id: id, request_ref: req.reference_number });
+      let notifTitle = 'Requete ' + (CONFIG.STATUSES[newStatus]?.fr || newStatus);
+      let notifMsg = 'Statut de ' + req.reference_number + ' : ' + (CONFIG.STATUSES[newStatus]?.fr || newStatus) + (reason ? '. Motif : ' + reason : '');
+      let notifType = 'STATUS_CHANGED';
+      if (newStatus === 'AWAITING_DOCUMENTS') { notifTitle = 'Documents complementaires demandes'; notifMsg = 'L\'administration vous demande de fournir des documents supplementaires pour la requete ' + req.reference_number + '.' + (reason ? ' Details : ' + reason : ''); notifType = 'DOCUMENT_REQUESTED'; }
+      if (newStatus === 'VALIDATED') { notifMsg = 'Votre requete ' + req.reference_number + ' a ete validee. L\'administrateur peut maintenant vous contacter pour la suite.' + (reason ? ' Note : ' + reason : ''); }
+      if (newStatus === 'REJECTED') { notifMsg = 'Votre requete ' + req.reference_number + ' a ete rejetee.' + (reason ? ' Motif : ' + reason : ' Contactez l\'administration pour plus de details.'); }
+      await NotifStore.create({ user_id: req.student_id, type: notifType, title: notifTitle, message: notifMsg, request_id: id, request_ref: req.reference_number });
     }
     Auth.addAudit('STATUT_MODIFIE', req.reference_number + ' -> ' + newStatus);
     return await this.getById(id);
