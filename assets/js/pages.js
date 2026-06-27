@@ -23,7 +23,7 @@ const Pages = {
           <div class="hero-text">
             <div class="hero-badge">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              ${CONFIG.INSTITUTION}
+              ${CONFIG.INSTITUTION} - Fonde en 1993
             </div>
             <h1>${t('home.heroTitle')}</h1>
             <p>${t('home.heroSubtitle')}</p>
@@ -34,20 +34,46 @@ const Pages = {
           </div>
           <div class="hero-visual">
             <div class="hero-illustration">
+              <div style="text-align:center;padding:10px 0">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                <p style="color:rgba(255,255,255,0.5);font-size:12px;margin-top:4px">Gestion numerique</p>
+              </div>
               <div class="hero-mock-card"><div class="hero-mock-dot" style="background:#42A5F5"></div><div style="flex:1"><div class="hero-mock-line" style="width:70%"></div><div class="hero-mock-line mt-1" style="width:40%;opacity:0.5"></div></div><span class="hero-mock-badge" style="background:rgba(66,165,245,0.3)">Validee</span></div>
               <div class="hero-mock-card"><div class="hero-mock-dot" style="background:#F4B400"></div><div style="flex:1"><div class="hero-mock-line" style="width:60%"></div><div class="hero-mock-line mt-1" style="width:50%;opacity:0.5"></div></div><span class="hero-mock-badge" style="background:rgba(244,180,0,0.3)">En cours</span></div>
-              <div class="hero-mock-card"><div class="hero-mock-dot" style="background:#2196F3"></div><div style="flex:1"><div class="hero-mock-line" style="width:80%"></div><div class="hero-mock-line mt-1" style="width:35%;opacity:0.5"></div></div><span class="hero-mock-badge" style="background:rgba(33,150,243,0.3)">Soumise</span></div>
-              <div class="hero-mock-card" style="opacity:0.7"><div class="hero-mock-dot" style="background:#9C27B0"></div><div style="flex:1"><div class="hero-mock-line" style="width:55%"></div><div class="hero-mock-line mt-1" style="width:45%;opacity:0.5"></div></div><span class="hero-mock-badge" style="background:rgba(156,39,176,0.3)">Recue</span></div>
+              <div class="hero-mock-card"><div class="hero-mock-dot" style="background:#4CAF50"></div><div style="flex:1"><div class="hero-mock-line" style="width:80%"></div><div class="hero-mock-line mt-1" style="width:35%;opacity:0.5"></div></div><span class="hero-mock-badge" style="background:rgba(76,175,80,0.3)">Soumise</span></div>
             </div>
           </div>
         </div>
       </div>
       <div class="container">
         <div class="hero-stats">
-          <div class="hero-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg><div class="hero-stat-value">18</div><div class="hero-stat-label">Types de requetes</div></div>
+          <div class="hero-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><div class="hero-stat-value">18</div><div class="hero-stat-label">Types de requetes</div></div>
           <div class="hero-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div class="hero-stat-value">24/7</div><div class="hero-stat-label">Disponibilite</div></div>
           <div class="hero-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><div class="hero-stat-value">100%</div><div class="hero-stat-label">Tracabilite</div></div>
           <div class="hero-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><div class="hero-stat-value">13</div><div class="hero-stat-label">Departements</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AVANTAGES VISUELS -->
+    <section style="padding:60px 0;background:var(--bg)">
+      <div class="container">
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:40px;align-items:center">
+          <div>
+            <h2 style="margin-bottom:16px">Fini les files d'attente et les dossiers perdus</h2>
+            <p style="color:var(--text-secondary);line-height:1.8;margin-bottom:20px">Avec IUTRequests, deposez vos demandes administratives depuis votre telephone ou votre ordinateur. Plus besoin de vous deplacer physiquement au service concerne. Chaque requete est tracee, numerotee et suivie du debut a la fin.</p>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:center;gap:12px"><div style="width:40px;height:40px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><strong>Numero unique</strong> pour chaque requete (ex: IUT-2026-TCO-0001)</div></div>
+              <div style="display:flex;align-items:center;gap:12px"><div style="width:40px;height:40px;border-radius:50%;background:var(--green-light);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg></div><div><strong>Notifications en temps reel</strong> a chaque etape du traitement</div></div>
+              <div style="display:flex;align-items:center;gap:12px"><div style="width:40px;height:40px;border-radius:50%;background:var(--yellow-light);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--yellow-dark)" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div><strong>Messagerie directe</strong> avec l'administration</div></div>
+            </div>
+          </div>
+          <div style="background:var(--bg-alt);border-radius:var(--radius-xl);padding:32px;border:1px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px"><div style="width:48px;height:48px;border-radius:12px;background:var(--primary);display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div><div><div style="font-family:Poppins;font-weight:600;font-size:16px">Attestation de scolarite</div><div style="font-size:13px;color:var(--text-muted)">IUT-2026-TCO-0042</div></div></div>
+            <div style="display:flex;gap:8px;margin-bottom:16px"><span class="badge badge-validated">Validee</span><span style="font-size:12px;color:var(--text-muted)">Traitee en 2 jours</span></div>
+            <div style="height:1px;background:var(--border);margin:16px 0"></div>
+            <div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div style="font-size:13px"><strong>Admin. TCO</strong> a valide votre demande</div></div>
+          </div>
         </div>
       </div>
     </section>
@@ -81,9 +107,36 @@ const Pages = {
     <!-- CATEGORIES -->
     <section class="categories-section">
       <div class="container">
-        <div class="section-header"><h2>${t('home.categoriesTitle')}</h2></div>
+        <div class="section-header"><h2>${t('home.categoriesTitle')}</h2><p>Voici les types de demandes que vous pouvez soumettre via la plateforme.</p></div>
         <div class="categories-grid">
-          ${cats.map(c => '<div class="category-card"><h4>'+Utils.escapeHtml(c.name)+'</h4><p>'+Utils.escapeHtml(c.desc)+'</p></div>').join('')}
+          ${cats.map((c,i) => '<div class="category-card"><div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:'+(['var(--primary-light)','var(--green-light)','var(--yellow-light)','#F3E5F5','#E3F2FD','#FFF3E0'])[i%6]+';display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:14px;font-weight:700;color:'+(['var(--primary)','var(--green)','var(--yellow-dark)','#7B1FA2','#1565C0','#E65100'])[i%6]+'">'+(i+1)+'</span></div><div><h4>'+Utils.escapeHtml(c.name)+'</h4><p>'+Utils.escapeHtml(c.desc)+'</p></div></div></div>').join('')}
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTACT -->
+    <section style="padding:60px 0;background:var(--bg)">
+      <div class="container">
+        <div class="section-header"><h2>Contactez-nous</h2><p>Pour toute question concernant la plateforme ou vos demarches administratives.</p></div>
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px">
+          <div class="card" style="text-align:center">
+            <div style="width:48px;height:48px;border-radius:12px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+            <h4>E-mail</h4>
+            <p style="font-size:14px;color:var(--text-secondary)">infos.iut@univ-douala</p>
+            <a href="mailto:infos.iut@univ-douala" class="btn btn-outline btn-sm mt-2">Envoyer un e-mail</a>
+          </div>
+          <div class="card" style="text-align:center">
+            <div style="width:48px;height:48px;border-radius:12px;background:#E8F5E9;display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+            <h4>WhatsApp</h4>
+            <p style="font-size:14px;color:var(--text-secondary)">+237 6XX XXX XXX</p>
+            <a href="https://wa.me/237600000000" target="_blank" class="btn btn-outline btn-sm mt-2" style="color:#2E7D32;border-color:#2E7D32">Ecrire sur WhatsApp</a>
+          </div>
+          <div class="card" style="text-align:center">
+            <div style="width:48px;height:48px;border-radius:12px;background:var(--yellow-light);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--yellow-dark)" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+            <h4>Adresse</h4>
+            <p style="font-size:14px;color:var(--text-secondary)">BP 8698, Ndogbong<br>Douala, Cameroun</p>
+            <a href="https://maps.google.com/?q=IUT+Douala" target="_blank" class="btn btn-outline btn-sm mt-2">Voir sur la carte</a>
+          </div>
         </div>
       </div>
     </section>
@@ -93,7 +146,10 @@ const Pages = {
       <div class="container">
         <h2>${t('home.ctaTitle')}</h2>
         <p>${t('home.ctaDesc')}</p>
-        <a href="#/register" class="btn btn-white btn-lg">${t('home.startBtn')}</a>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+          <a href="#/register" class="btn btn-white btn-lg">${t('home.startBtn')}</a>
+          <a href="#/faq" class="btn btn-white-outline btn-lg">Consulter la FAQ</a>
+        </div>
       </div>
     </section>`;
   },
