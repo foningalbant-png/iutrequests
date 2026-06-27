@@ -4,7 +4,7 @@
 
 const CONFIG = {
   // Supabase - Remplacez par vos propres cles apres creation du projet sur supabase.com
-  SUPABASE_URL: 'https://yfnipfjbkkkvidbotvtp.supabase.co',
+  SUPABASE_URL: 'https://yfnipfjbkkkvldbotvtp.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmbmlwZmpia2trdmxkYm90dnRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NzEyOTksImV4cCI6MjA5ODA0NzI5OX0.kfh0xVLiu95uAzzNJIAm6q1HcxlTfrdPUHnPOl_r948',
 
   // Mode demo (utilise localStorage au lieu de Supabase)
