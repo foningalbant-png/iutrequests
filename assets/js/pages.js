@@ -327,6 +327,10 @@ const Pages = {
     if (statusFilter) requests = requests.filter(r => r.status === statusFilter);
     if (searchTerm) requests = requests.filter(r => r.reference_number.toLowerCase().includes(searchTerm.toLowerCase()) || r.title.toLowerCase().includes(searchTerm.toLowerCase()));
     requests = requests.slice().reverse();
+    const perPage = 15;
+    const page = parseInt(localStorage.getItem('iut-page') || '1');
+    const totalPages = Math.ceil(requests.length / perPage) || 1;
+    const paged = requests.slice((page-1)*perPage, page*perPage);
 
     const statusOpts = Object.keys(CONFIG.STATUSES).map(s => '<option value="'+s+'" '+(statusFilter===s?'selected':'')+'>'+CONFIG.STATUSES[s].fr+'</option>').join('');
 
@@ -351,7 +355,8 @@ const Pages = {
 
       <p class="text-muted mb-2" style="font-size:13px">${requests.length} requete(s) ${statusFilter ? '- Filtre: '+CONFIG.STATUSES[statusFilter]?.fr : ''} ${searchTerm ? '- Recherche: "'+Utils.escapeHtml(searchTerm)+'"' : ''}</p>
 
-      ${requests.length > 0 ? '<div class="table-container"><table><thead><tr><th>Reference</th><th>Objet</th><th>Categorie</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+requests.map(r => '<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td><span class="font-mono text-primary" style="font-size:13px">'+r.reference_number+'</span></td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.category_name||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.created_at)+'</td></tr>').join('')+'</tbody></table></div>' : '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg><p>Aucune requete trouvee.</p></div>'}
+      ${paged.length > 0 ? '<div class="table-container"><table><thead><tr><th>Reference</th><th>Objet</th><th>Categorie</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+paged.map(r => '<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td><span class="font-mono text-primary" style="font-size:13px">'+r.reference_number+'</span></td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.category_name||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.created_at)+'</td></tr>').join('')+'</tbody></table></div>' : '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg><p>Aucune requete trouvee.</p></div>'}
+      ${totalPages > 1 ? '<div class="pagination"><span class="pagination-info">Page '+page+'/'+totalPages+' ('+requests.length+' requetes)</span><div class="flex gap-1">'+(page>1?'<button class="btn btn-outline btn-sm" onclick="localStorage.setItem(\'iut-page\',\''+(page-1)+'\');App.route()">Precedent</button>':'')+(page<totalPages?'<button class="btn btn-outline btn-sm" onclick="localStorage.setItem(\'iut-page\',\''+(page+1)+'\');App.route()">Suivant</button>':'')+'</div></div>' : ''}
     </div>`;
   },
 

@@ -216,7 +216,16 @@
     async transferReq(id) {
       const adminId = document.getElementById('transfer-sel').value;
       if (!adminId) { Utils.toast('Selectionnez un administrateur', 'error'); return; }
-      Utils.toast('Requete transferee', 'success');
+      const req = await RequestStore.getById(id);
+      const u = Auth.getUser();
+      // Notifier le nouvel admin
+      await NotifStore.create({ user_id: adminId, type: 'REQUEST_TRANSFERRED', title: 'Requete transferee', message: 'La requete ' + (req?.reference_number||'') + ' vous a ete transferee par ' + (u.first_name||'') + ' ' + (u.last_name||''), request_id: id, request_ref: req?.reference_number });
+      // Notifier l'etudiant
+      if (req?.student_id) { await NotifStore.create({ user_id: req.student_id, type: 'REQUEST_TRANSFERRED', title: 'Requete transferee', message: 'Votre requete ' + req.reference_number + ' a ete transferee a un autre administrateur.', request_id: id, request_ref: req.reference_number }); }
+      // Historique
+      await SB.insert('request_status_history', { request_id: id, status: req?.status || 'IN_PROGRESS', changed_by: (u.first_name||'')+' '+(u.last_name||''), reason: 'Transferee a un autre administrateur' });
+      Auth.addAudit('TRANSFERT', (req?.reference_number||'') + ' transferee');
+      Utils.toast('Requete transferee avec succes', 'success');
       this.route();
     },
 

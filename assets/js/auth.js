@@ -242,6 +242,9 @@ const RequestStore = {
 
     if (!data.isDraft && data.studentId) {
       await NotifStore.create({ user_id: data.studentId, type: 'REQUEST_CREATED', title: 'Requete soumise', message: 'Votre requete ' + ref + ' a ete soumise.', request_id: req.id, request_ref: ref });
+      // Notifier tous les admins
+      const admins = await SB.select('profiles', 'role=eq.ADMIN&is_active=eq.true');
+      if (admins) { for (const admin of admins) { await NotifStore.create({ user_id: admin.id, type: 'REQUEST_CREATED', title: 'Nouvelle requete', message: 'Nouvelle requete ' + ref + ' de ' + (data.studentName||'un etudiant') + ' - ' + (data.categoryName||''), request_id: req.id, request_ref: ref }); } }
     }
     Auth.addAudit('REQUETE_CREEE', ref + ' - ' + data.title);
     return req;
@@ -304,6 +307,9 @@ const RequestStore = {
     if (!req) return;
     await SB.update('requests', 'id=eq.' + reqId, { reminder_count: (req.reminder_count || 0) + 1, updated_at: new Date().toISOString() });
     await SB.insert('request_status_history', { request_id: reqId, status: 'RELANCE', changed_by: req.student_name, reason: 'Relance par l\'etudiant (n.' + ((req.reminder_count || 0) + 1) + ')' });
+    // Notifier les admins de la relance
+    const admins = await SB.select('profiles', 'role=eq.ADMIN&is_active=eq.true');
+    if (admins) { for (const admin of admins) { await NotifStore.create({ user_id: admin.id, type: 'STUDENT_REMINDER', title: 'Relance etudiant', message: 'L\'etudiant ' + (req.student_name||'') + ' a relance la requete ' + req.reference_number, request_id: reqId, request_ref: req.reference_number }); } }
     Auth.addAudit('RELANCE', req.reference_number);
   },
 
