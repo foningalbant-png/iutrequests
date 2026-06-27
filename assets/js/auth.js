@@ -40,13 +40,16 @@ const SB = {
       });
       if (!res.ok) {
         const err = await res.text();
-        console.error('Supabase error:', err);
+        console.error('Supabase error:', res.status, err);
+        SB._lastError = err;
         return null;
       }
       if (method === 'DELETE') return true;
+      SB._lastError = null;
       return await res.json();
     } catch (e) {
-      console.error('Supabase fetch error:', e);
+      console.error('Supabase fetch error:', e.message);
+      SB._lastError = 'Impossible de contacter le serveur: ' + e.message;
       return null;
     }
   },
@@ -102,7 +105,7 @@ const Auth = {
 
   async loginSuperAdmin(email, password) {
     const users = await SB.select('profiles', 'email=eq.' + encodeURIComponent(email) + '&password=eq.' + encodeURIComponent(password) + '&role=eq.SUPER_ADMIN');
-    if (!users || users.length === 0) return { success: false, message: 'Identifiants Super Administrateur incorrects' };
+    if (!users || users.length === 0) return { success: false, message: 'Identifiants Super Administrateur incorrects. ' + (SB._lastError || 'Verifiez email et mot de passe.') };
     _currentUser = users[0];
     localStorage.setItem('iut-user', JSON.stringify(users[0]));
     this.addAudit('CONNEXION', 'Super Admin: ' + users[0].first_name);
@@ -123,7 +126,7 @@ const Auth = {
       department: data.department, program: data.program,
       level: data.level, role: 'STUDENT', is_active: true
     });
-    if (!user) return { success: false, message: 'Erreur lors de l\'inscription.' };
+    if (!user) return { success: false, message: 'Erreur lors de l\'inscription: ' + (SB._lastError || 'Verifiez votre connexion internet') };
     _currentUser = user;
     localStorage.setItem('iut-user', JSON.stringify(user));
     this.addAudit('INSCRIPTION', 'Etudiant: ' + data.firstName + ' ' + data.lastName);
