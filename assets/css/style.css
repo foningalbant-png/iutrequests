@@ -760,6 +760,18 @@ tbody tr:hover { background: var(--gray-50); }
   margin-left: auto; flex-shrink: 0;
 }
 
+/* --- Impression --- */
+@media print {
+  .header, .sidebar, .sidebar-overlay, .toast-container, .modal-overlay,
+  .btn, button, .filters, .message-input-bar, .file-upload, .contact-grid,
+  .mobile-menu-btn, .header-right { display: none !important; }
+  .main-content, .main-with-sidebar { margin: 0 !important; padding: 10px !important; }
+  .card { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; }
+  body { background: white !important; color: black !important; font-size: 12pt; }
+  .badge { border: 1px solid #999 !important; }
+  a { color: black !important; text-decoration: none !important; }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

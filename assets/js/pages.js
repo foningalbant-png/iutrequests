@@ -222,7 +222,7 @@ const Pages = {
             </div>
             <div class="form-group">
               <label class="form-label">${t('auth.department')} *</label>
-              <input type="text" class="form-input" id="reg-department" list="dept-list" required placeholder="${t('auth.deptHint')}">
+              <input type="text" class="form-input" id="reg-department" list="dept-list" required placeholder="${t('auth.deptHint')}" oninput="Pages.updatePrograms()">
               <datalist id="dept-list">${allDeptOptions}</datalist>
             </div>
             <div class="form-group">
@@ -241,6 +241,16 @@ const Pages = {
         <p class="auth-footer">${t('auth.hasAccount')} <a href="#/login">${t('nav.login')}</a></p>
       </div>
     </div>`;
+  },
+
+  updatePrograms() {
+    const dept = document.getElementById('reg-department')?.value || '';
+    const progList = document.getElementById('prog-list');
+    if (!progList) return;
+    let code = '';
+    CONFIG.DEPARTMENTS.forEach(d => { if (dept.includes(d.code) || dept.includes(d.name)) code = d.code; });
+    const progs = CONFIG.PROGRAMS[code] || [];
+    progList.innerHTML = progs.map(p => '<option value="'+p.name+' ('+p.code+')">').join('');
   },
 
   async handleRegister(e) {
@@ -533,7 +543,7 @@ const Pages = {
             <div class="flex justify-between mb-1"><span class="text-muted">Categorie</span><span>${Utils.escapeHtml(req.category_name||'-')}</span></div>
             <div class="flex justify-between mb-1"><span class="text-muted">Departement</span><span>${Utils.escapeHtml(req.department||'-')}</span></div>
             ${req.program ? '<div class="flex justify-between mb-1"><span class="text-muted">Filiere</span><span>'+Utils.escapeHtml(req.program)+'</span></div>' : ''}
-            <div class="flex justify-between mb-1"><span class="text-muted">Creee le</span><span style="font-size:12px">${Utils.formatDateTime(req.createdAt)}</span></div>
+            <div class="flex justify-between mb-1"><span class="text-muted">Creee le</span><span style="font-size:12px">${Utils.formatDateTime(req.created_at)}</span></div>
             <div class="flex justify-between mb-1"><span class="text-muted">Consultee</span><span style="font-size:12px">${req.first_viewed_at ? Utils.formatDateTime(req.first_viewed_at) : '<span style="color:var(--yellow-dark)">Pas encore</span>'}</span></div>
             <div class="flex justify-between mb-1"><span class="text-muted">Relances</span><span>${req.reminder_count||0}</span></div>
           </div>
@@ -543,6 +553,9 @@ const Pages = {
           <h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Actions</h4>
           <div class="flex flex-col gap-1">
             ${['SUBMITTED','RECEIVED','IN_PROGRESS','AWAITING_DOCUMENTS'].includes(req.status) ? '<button class="btn btn-outline btn-sm" style="justify-content:flex-start" onclick="Pages.remindRequest(\''+id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Relancer la requete</button>' : ''}
+            ${['CLOSED','REJECTED'].includes(req.status) ? '<button class="btn btn-outline btn-sm" style="justify-content:flex-start" onclick="Pages.reopenRequest(\''+id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Rouvrir cette requete</button>' : ''}
+            ${['PROCESSED','CLOSED'].includes(req.status) && !req.satisfaction_score ? '<hr style="border:none;border-top:1px solid var(--border);margin:8px 0"><p style="font-size:13px;font-weight:600;margin-bottom:8px">Etes-vous satisfait(e) du traitement ?</p><div class="flex gap-1">'+[1,2,3,4,5].map(n=>'<button class="btn btn-outline btn-sm" onclick="Pages.rateSatisfaction(\''+id+'\','+n+')" style="min-width:36px">'+n+'</button>').join('')+'</div><p class="form-hint">1 = Pas du tout satisfait, 5 = Tres satisfait</p>' : ''}
+            ${req.satisfaction_score ? '<div class="alert alert-success" style="margin-top:8px"><div><p style="font-size:13px">Satisfaction : <strong>'+req.satisfaction_score+'/5</strong></p>'+(req.satisfaction_comment?'<p style="font-size:12px;margin-top:4px">'+Utils.escapeHtml(req.satisfaction_comment)+'</p>':'')+'</div></div>' : ''}
             <hr style="border:none;border-top:1px solid var(--border);margin:8px 0">
             <button class="btn btn-outline btn-sm" style="justify-content:flex-start;color:var(--red);border-color:var(--red)" onclick="Pages.deleteRequest('${id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Supprimer cette requete</button>
           </div>
@@ -564,6 +577,20 @@ const Pages = {
   async remindRequest(id) {
     await RequestStore.remind(id);
     Utils.toast('Relance envoyee avec succes', 'success');
+    App.route();
+  },
+
+  async reopenRequest(id) {
+    const user = Auth.getUser();
+    await RequestStore.updateStatus(id, 'REOPENED', 'Reouverture demandee par l\'etudiant', (user.first_name||'')+' '+(user.last_name||''));
+    Utils.toast('Requete reouverte', 'success');
+    App.route();
+  },
+
+  async rateSatisfaction(id, score) {
+    const comment = prompt('Un commentaire sur le traitement de votre requete ? (facultatif)') || '';
+    await RequestStore.setSatisfaction(id, score, comment);
+    Utils.toast('Merci pour votre evaluation !', 'success');
     App.route();
   },
 
