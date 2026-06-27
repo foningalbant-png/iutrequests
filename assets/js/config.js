@@ -12,9 +12,9 @@ const CONFIG = {
 
   // EmailJS - Pour l'envoi d'emails (reinitialisation mot de passe, notifications)
   // Creez un compte sur emailjs.com et remplissez ces valeurs
-  EMAILJS_SERVICE_ID: '',
-  EMAILJS_TEMPLATE_ID: '',
-  EMAILJS_PUBLIC_KEY: '',
+  EMAILJS_SERVICE_ID: 'service_r7hveqr',
+  EMAILJS_TEMPLATE_ID: 'template_o9ns8aq',
+  EMAILJS_PUBLIC_KEY: '6A4cLpoA-dp2XZVQA',
 
   // Application
   APP_NAME: 'IUTRequests',
