@@ -136,17 +136,20 @@ const Auth = {
   logout() { _currentUser = null; localStorage.removeItem('iut-user'); },
 
   async sendEmail(toEmail, userName, resetCode) {
-    if (CONFIG.EMAILJS_SERVICE_ID && CONFIG.EMAILJS_PUBLIC_KEY && typeof emailjs !== 'undefined') {
-      try {
-        await emailjs.send(CONFIG.EMAILJS_SERVICE_ID, CONFIG.EMAILJS_TEMPLATE_ID, {
-          to_email: toEmail,
-          user_name: userName,
-          reset_code: resetCode,
-        }, CONFIG.EMAILJS_PUBLIC_KEY);
-        return true;
-      } catch (e) { console.error('EmailJS error:', e); return false; }
-    }
-    return false;
+    if (!CONFIG.EMAILJS_SERVICE_ID || !CONFIG.EMAILJS_PUBLIC_KEY) { console.log('EmailJS non configure'); return false; }
+    if (typeof emailjs === 'undefined') { console.log('EmailJS script non charge'); return false; }
+    try {
+      emailjs.init(CONFIG.EMAILJS_PUBLIC_KEY);
+      const result = await emailjs.send(CONFIG.EMAILJS_SERVICE_ID, CONFIG.EMAILJS_TEMPLATE_ID, {
+        to_email: toEmail,
+        user_name: userName || 'Etudiant',
+        reset_code: resetCode,
+        from_name: 'IUTRequests',
+        reply_to: 'noreply@iutrequests.cm',
+      });
+      console.log('Email envoye:', result);
+      return true;
+    } catch (e) { console.error('EmailJS erreur:', e); return false; }
   },
 
   async generateResetCode(email) {
