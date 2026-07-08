@@ -32,9 +32,10 @@
         if (hash !== '/login' && (!user || user.role !== 'SUPER_ADMIN')) { this.showLogin(); return; }
         if (hash === '/login') { this.showLogin(); return; }
       }
+      let unreadCount = 0;
+      try { unreadCount = await NotifStore.getUnreadCount(user.id); } catch(e) {}
       const path = hash.split('?')[0];
-      // Show loading for data pages
-      document.getElementById('app').innerHTML = this.layout('<div class="loading-page"><div class="spinner"></div><p>Chargement...</p></div>', path);
+      document.getElementById('app').innerHTML = this.layout('<div class="loading-page"><div class="spinner"></div><p>Chargement...</p></div>', path, unreadCount);
       let c = '';
       switch (path) {
         case '/': case '/dashboard': c = await this.pgDash(); break;
@@ -53,13 +54,12 @@
           if (path.startsWith('/requests/')) c = await this.pgReqDetail(path.split('/')[2]);
           else c = '<div class="empty-state mt-4"><h2>Page non trouvee</h2></div>';
       }
-      document.getElementById('app').innerHTML = this.layout(c, path);
+      document.getElementById('app').innerHTML = this.layout(c, path, unreadCount);
       window.scrollTo(0, 0);
     },
 
-    layout(content, path) {
+    layout(content, path, unread = 0) {
       const user = Auth.getUser();
-      const unread = NotifStore.getUnreadCount(user.id);
       const links = [
         {p:'/dashboard',l:'Tableau de bord',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>'},
         {p:'/requests',l:'Toutes les requetes',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>'},

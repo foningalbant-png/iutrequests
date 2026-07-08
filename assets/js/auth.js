@@ -85,9 +85,10 @@ const Auth = {
 
   async login(email, password) {
     const users = await SB.select('profiles', 'email=eq.' + encodeURIComponent(email) + '&password=eq.' + encodeURIComponent(password) + '&role=eq.STUDENT');
-    if (!users || users.length === 0) return { success: false, message: 'Identifiants incorrects' };
+    if (SB._lastError) return { success: false, message: 'Impossible de joindre le serveur. Verifiez votre connexion internet.' };
+    if (!users || users.length === 0) return { success: false, message: 'Email ou mot de passe incorrect.' };
     const user = users[0];
-    if (!user.is_active) return { success: false, message: 'Compte desactive' };
+    if (!user.is_active) return { success: false, message: 'Compte desactive. Contactez l\'administration.' };
     _currentUser = user;
     localStorage.setItem('iut-user', JSON.stringify(user));
     this.addAudit('CONNEXION', 'Etudiant: ' + user.first_name + ' ' + user.last_name);
@@ -96,7 +97,8 @@ const Auth = {
 
   async loginAdmin(email, password) {
     const users = await SB.select('profiles', 'email=eq.' + encodeURIComponent(email) + '&password=eq.' + encodeURIComponent(password) + '&role=eq.ADMIN&is_active=eq.true');
-    if (!users || users.length === 0) return { success: false, message: 'Identifiants administrateur incorrects.' };
+    if (SB._lastError) return { success: false, message: 'Impossible de joindre le serveur. Verifiez votre connexion internet.' };
+    if (!users || users.length === 0) return { success: false, message: 'Email ou mot de passe administrateur incorrect.' };
     _currentUser = users[0];
     localStorage.setItem('iut-user', JSON.stringify(users[0]));
     this.addAudit('CONNEXION', 'Admin: ' + users[0].first_name + ' ' + users[0].last_name);
@@ -105,7 +107,8 @@ const Auth = {
 
   async loginSuperAdmin(email, password) {
     const users = await SB.select('profiles', 'email=eq.' + encodeURIComponent(email) + '&password=eq.' + encodeURIComponent(password) + '&role=eq.SUPER_ADMIN');
-    if (!users || users.length === 0) return { success: false, message: 'Identifiants Super Administrateur incorrects. ' + (SB._lastError || 'Verifiez email et mot de passe.') };
+    if (SB._lastError) return { success: false, message: 'Impossible de joindre le serveur Supabase. Verifiez votre connexion internet ou restaurez le projet sur supabase.com.' };
+    if (!users || users.length === 0) return { success: false, message: 'Email ou mot de passe Super Administrateur incorrect. Verifiez vos identifiants.' };
     _currentUser = users[0];
     localStorage.setItem('iut-user', JSON.stringify(users[0]));
     this.addAudit('CONNEXION', 'Super Admin: ' + users[0].first_name);
