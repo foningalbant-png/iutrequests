@@ -329,7 +329,26 @@ const Pages = {
       level: document.getElementById('reg-level').value,
       password: pw,
     });
-    if (result.success) { Utils.toast('Compte cree avec succes !', 'success'); location.hash = '#/dashboard'; }
+    if (result.success) {
+      const prenom = document.getElementById('reg-firstName').value;
+      Auth.logout();
+      document.getElementById('app').innerHTML = `
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg-alt);padding:20px">
+        <div style="width:100%;max-width:480px;text-align:center">
+          <div style="width:72px;height:72px;border-radius:50%;background:var(--green-light);display:flex;align-items:center;justify-content:center;margin:0 auto 24px">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#0F9D58" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <h1 style="font-family:Poppins,sans-serif;font-size:1.6rem;font-weight:700;margin-bottom:8px">Compte cree avec succes !</h1>
+          <p style="color:var(--text-secondary);margin-bottom:8px">Bienvenue <strong>${Utils.escapeHtml(prenom)}</strong> sur IUTRequests.</p>
+          <p style="color:var(--text-secondary);margin-bottom:32px">Votre compte a ete cree. Connectez-vous maintenant pour acceder a votre espace etudiant.</p>
+          <a href="#/login" class="btn btn-primary btn-lg" style="width:100%;max-width:280px;display:inline-flex;justify-content:center">
+            Se connecter a mon compte
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:8px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </a>
+          <p style="margin-top:20px;font-size:13px;color:var(--text-muted)">Utilisez l'email et le mot de passe que vous venez de choisir.</p>
+        </div>
+      </div><div id="toast-container" class="toast-container"></div>`;
+    }
     else Utils.toast(result.message, 'error');
     return false;
   },
