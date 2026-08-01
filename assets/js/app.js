@@ -24,14 +24,11 @@ const App = {
     const path = hash.split('?')[0];
     let content = '';
 
-    // Pages statiques (pas de chargement async)
+    // Pages statiques synchrones
     switch (path) {
       case '/login': content = Pages.login(); break;
-      case '/register': content = Pages.register(); break;
       case '/faq': content = Pages.faq(); break;
       case '/forgot-password': content = Pages.forgotPassword(); break;
-      case '/requests/new': content = Pages.createRequest(); break;
-      case '/profile': content = Pages.profile(); break;
     }
 
     // Si page statique trouvee, afficher directement
@@ -48,6 +45,12 @@ const App = {
 
     if (path === '/') {
       content = await Pages.home();
+    } else if (path === '/register') {
+      content = await Pages.register();
+    } else if (path === '/requests/new') {
+      content = await Pages.createRequest();
+    } else if (path === '/profile') {
+      content = await Pages.profile();
     } else if (path === '/dashboard') {
       if (user && user.role !== 'STUDENT') { Auth.logout(); location.hash = '#/login'; return; }
       content = await Pages.dashboard();

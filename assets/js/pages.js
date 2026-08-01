@@ -5,17 +5,40 @@
 
 const Pages = {
 
-  _getCats() {
-    return JSON.parse(localStorage.getItem('iut-cats') || 'null') || CONFIG.CATEGORIES;
+  _sbCache: {},
+
+  async _getCats() {
+    if (this._sbCache.cats) return this._sbCache.cats;
+    try {
+      const rows = await SB.select('request_categories', 'is_active=eq.true', 'sort_order.asc,name.asc');
+      if (rows && rows.length) {
+        const cats = rows.map(c => ({ id: c.id, name: c.name, desc: c.description || '', instructions: c.instructions || '', bodyTemplate: c.body_template || '', requiredDocuments: c.required_documents || '' }));
+        this._sbCache.cats = cats;
+        return cats;
+      }
+    } catch(e) {}
+    return CONFIG.CATEGORIES;
   },
 
-  _getDepts() {
-    return JSON.parse(localStorage.getItem('iut-depts') || 'null') || CONFIG.DEPARTMENTS;
+  async _getDepts() {
+    if (this._sbCache.depts) return this._sbCache.depts;
+    try {
+      const rows = await SB.select('departments', null, 'sort_order.asc,name.asc');
+      if (rows && rows.length) { this._sbCache.depts = rows; return rows; }
+    } catch(e) {}
+    return CONFIG.DEPARTMENTS;
   },
 
-  _getProgs() {
-    const stored = JSON.parse(localStorage.getItem('iut-progs') || 'null');
-    if (stored) return stored;
+  async _getProgs() {
+    if (this._sbCache.progs) return this._sbCache.progs;
+    try {
+      const rows = await SB.query('programs', 'GET', { filter: 'select=*,departments(code)', order: 'sort_order.asc,name.asc' });
+      if (rows && rows.length) {
+        const progs = rows.map(p => ({ id: p.id, name: p.name, code: p.code, dept: p.departments?.code || '', headName: p.head_name || '' }));
+        this._sbCache.progs = progs;
+        return progs;
+      }
+    } catch(e) {}
     return Object.entries(CONFIG.PROGRAMS).flatMap(([dept, ps]) => ps.map(p => ({ ...p, dept })));
   },
 
@@ -34,11 +57,11 @@ const Pages = {
       ]);
       cats = (sbCats && sbCats.length > 0)
         ? sbCats.map(c => ({ id: c.id, name: c.name, desc: c.description || '' }))
-        : this._getCats();
-      depts = (sbDepts && sbDepts.length > 0) ? sbDepts : this._getDepts();
+        : CONFIG.CATEGORIES;
+      depts = (sbDepts && sbDepts.length > 0) ? sbDepts : CONFIG.DEPARTMENTS;
     } catch (e) {
-      cats = this._getCats();
-      depts = this._getDepts();
+      cats = CONFIG.CATEGORIES;
+      depts = CONFIG.DEPARTMENTS;
     }
     return `
     <!-- HERO -->
@@ -332,9 +355,10 @@ const Pages = {
   // =====================================================
   //  INSCRIPTION
   // =====================================================
-  register() {
+  async register() {
     const t = I18N.t.bind(I18N);
-    const allDeptOptions = this._getDepts().map(d => '<option value="'+d.name+' ('+d.code+')">').join('');
+    const depts = await this._getDepts();
+    const allDeptOptions = depts.map(d => '<option value="'+d.name+' ('+d.code+')">').join('');
     const levelOptions = CONFIG.LEVELS.map(l => '<option value="'+l.value+'">'+l.label+'</option>').join('');
     return `
     <div class="auth-split">
@@ -429,13 +453,14 @@ const Pages = {
     </div>`;
   },
 
-  updatePrograms() {
+  async updatePrograms() {
     const dept = document.getElementById('reg-department')?.value || '';
     const progList = document.getElementById('prog-list');
     if (!progList) return;
     let code = '';
-    this._getDepts().forEach(d => { if (dept.includes(d.code) || dept.includes(d.name)) code = d.code; });
-    const progs = this._getProgs().filter(p => p.dept === code);
+    const depts = await this._getDepts();
+    depts.forEach(d => { if (dept.includes(d.code) || dept.includes(d.name)) code = d.code; });
+    const progs = (await this._getProgs()).filter(p => p.dept === code);
     progList.innerHTML = progs.map(p => '<option value="'+p.name+' ('+p.code+')">').join('');
   },
 
@@ -672,10 +697,10 @@ const Pages = {
   // =====================================================
   //  CREATION DE REQUETE
   // =====================================================
-  createRequest() {
+  async createRequest() {
     const user = Auth.getUser();
     const t = I18N.t.bind(I18N);
-    const cats = this._getCats();
+    const [cats, depts] = await Promise.all([this._getCats(), this._getDepts()]);
     const catOptions = cats.map(c => '<option value="'+c.id+'">'+Utils.escapeHtml(c.name)+'</option>').join('');
 
     return `
@@ -687,7 +712,7 @@ const Pages = {
             <div class="form-group">
               <label class="form-label">${t('auth.department')}</label>
               <input type="text" class="form-input" id="req-dept" value="${Utils.escapeHtml(user.department||'')}" placeholder="Votre département" list="req-dept-list">
-              <datalist id="req-dept-list">${this._getDepts().map(d=>'<option value="'+d.name+' ('+d.code+')">').join('')}</datalist>
+              <datalist id="req-dept-list">${depts.map(d=>'<option value="'+d.name+' ('+d.code+')">').join('')}</datalist>
             </div>
             <div class="form-group">
               <label class="form-label">${t('auth.program')}</label>
@@ -740,8 +765,8 @@ const Pages = {
     </div>`;
   },
 
-  onCategoryChange(catId) {
-    const cats = this._getCats();
+  async onCategoryChange(catId) {
+    const cats = await this._getCats();
     const cat = cats.find(c => c.id === catId);
     const infoEl = document.getElementById('category-info');
     const titleEl = document.getElementById('req-title');
@@ -769,7 +794,7 @@ const Pages = {
   async submitRequest(isDraft) {
     const user = Auth.getUser();
     const catId = document.getElementById('req-category').value;
-    const cats = this._getCats();
+    const cats = await this._getCats();
     const cat = cats.find(c => c.id === catId);
     const dept = document.getElementById('req-dept').value || user.department || '';
     const prog = document.getElementById('req-prog').value || user.program || '';
@@ -938,12 +963,13 @@ const Pages = {
   // =====================================================
   //  PROFIL + MOT DE PASSE + SUPPRESSION COMPTE
   // =====================================================
-  profile() {
+  async profile() {
     const user = Auth.getUser();
     const t = I18N.t.bind(I18N);
     const fn = Utils.escapeHtml(user.first_name||user.firstName||'');
     const ln = Utils.escapeHtml(user.last_name||user.lastName||'');
     const initials = ((user.first_name||user.firstName||'?')[0]||'') + ((user.last_name||user.lastName||'?')[0]||'');
+    const depts = await this._getDepts();
     return `
     <div style="max-width:680px">
       <h1 class="page-title mb-3">${t('profile.title')}</h1>
@@ -980,7 +1006,7 @@ const Pages = {
           </div>
           <div class="form-group"><label class="form-label">${t('auth.phone')}</label><input type="tel" class="form-input" id="prof-phone" value="${Utils.escapeHtml(user.phone||'')}" placeholder="+237 6XX XXX XXX"></div>
           <div class="auth-section-label" style="margin-top:16px">Informations academiques</div>
-          <div class="form-group"><label class="form-label">${t('auth.department')}</label><input type="text" class="form-input" id="prof-dept" value="${Utils.escapeHtml(user.department||'')}" list="prof-dept-list"><datalist id="prof-dept-list">${this._getDepts().map(d=>'<option value="'+d.name+' ('+d.code+')">').join('')}</datalist></div>
+          <div class="form-group"><label class="form-label">${t('auth.department')}</label><input type="text" class="form-input" id="prof-dept" value="${Utils.escapeHtml(user.department||'')}" list="prof-dept-list"><datalist id="prof-dept-list">${depts.map(d=>'<option value="'+d.name+' ('+d.code+')">').join('')}</datalist></div>
           <div class="form-row">
             <div class="form-group"><label class="form-label">${t('auth.program')}</label><input type="text" class="form-input" id="prof-prog" value="${Utils.escapeHtml(user.program||'')}" placeholder="Votre filière"></div>
             <div class="form-group"><label class="form-label">${t('auth.matricule')} <span style="color:var(--text-muted);font-weight:400">(lecture seule)</span></label><input type="text" class="form-input" value="${Utils.escapeHtml(user.matricule||'')}" disabled style="opacity:0.6;cursor:not-allowed;font-family:Courier New,monospace"></div>
