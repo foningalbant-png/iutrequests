@@ -260,7 +260,7 @@ img { max-width: 100%; height: auto; }
 }
 .header-inner {
   display: flex; align-items: center; justify-content: space-between;
-  height: 100%; padding: 0 24px; max-width: 100%; overflow: hidden;
+  height: 100%; padding: 0 24px; max-width: 100%;
 }
 .header-left { display: flex; align-items: center; gap: 12px; min-width: 0; flex-shrink: 1; }
 .header-logo {
