@@ -22,10 +22,24 @@ const Pages = {
   // =====================================================
   //  PAGE D'ACCUEIL PUBLIQUE
   // =====================================================
-  home() {
+  async home() {
     const t = I18N.t.bind(I18N);
-    const cats = this._getCats();
-    const depts = this._getDepts();
+
+    // Lecture depuis Supabase pour cohérence sur tous les appareils
+    let cats, depts;
+    try {
+      const [sbCats, sbDepts] = await Promise.all([
+        SB.select('request_categories', 'is_active=eq.true', 'sort_order.asc'),
+        SB.select('departments', null, 'sort_order.asc')
+      ]);
+      cats = (sbCats && sbCats.length > 0)
+        ? sbCats.map(c => ({ id: c.id, name: c.name, desc: c.description || '' }))
+        : this._getCats();
+      depts = (sbDepts && sbDepts.length > 0) ? sbDepts : this._getDepts();
+    } catch (e) {
+      cats = this._getCats();
+      depts = this._getDepts();
+    }
     return `
     <!-- HERO -->
     <section class="hero">

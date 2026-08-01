@@ -26,7 +26,6 @@ const App = {
 
     // Pages statiques (pas de chargement async)
     switch (path) {
-      case '/': content = Pages.home(); break;
       case '/login': content = Pages.login(); break;
       case '/register': content = Pages.register(); break;
       case '/faq': content = Pages.faq(); break;
@@ -45,9 +44,11 @@ const App = {
 
     // Pages dynamiques (chargement depuis Supabase)
     // Afficher le layout avec un loading
-    document.getElementById('app').innerHTML = this.renderLayout('<div class="loading-page"><div class="spinner"></div><p>Chargement...</p></div>', path);
+    document.getElementById('app').innerHTML = this.renderLayout('<div class="loading-page"><div class="spinner"></div><p>Chargement…</p></div>', path);
 
-    if (path === '/dashboard') {
+    if (path === '/') {
+      content = await Pages.home();
+    } else if (path === '/dashboard') {
       if (user && user.role !== 'STUDENT') { Auth.logout(); location.hash = '#/login'; return; }
       content = await Pages.dashboard();
     } else if (path === '/requests') {
@@ -57,7 +58,7 @@ const App = {
     } else if (path.startsWith('/requests/')) {
       content = await Pages.requestDetail(path.split('/')[2]);
     } else {
-      content = '<div class="empty-state mt-4"><h2>Page non trouvee</h2><p><a href="#/">Retour a l\'accueil</a></p></div>';
+      content = '<div class="empty-state mt-4"><h2>Page non trouvée</h2><p><a href="#/">Retour à l\'accueil</a></p></div>';
     }
 
     document.getElementById('app').innerHTML = this.renderLayout(content, path);
