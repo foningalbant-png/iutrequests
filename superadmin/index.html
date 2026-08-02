@@ -47,7 +47,7 @@
         case '/superadmins': c = await this.pgSuperAdmins(); break;
         case '/users': c = await this.pgUsers(); break;
         case '/audit': c = this.pgAudit(); break;
-        case '/faq': c = this.pgFaq(); break;
+        case '/faq': c = await this.pgFaq(); break;
         case '/notifications': c = await this.pgNotifs(); break;
         case '/profile': c = this.pgProfile(); break;
         default:
@@ -414,38 +414,59 @@
     /* ===================== TOUS LES COMPTES ===================== */
     async pgUsers() { const us=await Auth.getAllUsers(); const rl={STUDENT:'Ã‰tudiant',ADMIN:'Administrateur',SUPER_ADMIN:'Super Admin'}; const rb={STUDENT:'badge-draft',ADMIN:'badge-submitted',SUPER_ADMIN:'badge-reopened'}; return `<div class="page-header"><h1 class="page-title">Tous les comptes (${us.length})</h1></div><div class="card" style="padding:0"><div class="table-container"><table><thead><tr><th>Nom</th><th>E-mail</th><th>RÃ´le</th><th>DÃ©partement</th><th>Statut</th><th>Date</th></tr></thead><tbody>${us.map(u=>'<tr><td><div class="flex items-center gap-2"><div class="user-avatar" style="width:32px;height:32px;font-size:11px">'+((u.first_name||'')?.[0]||'')+((u.last_name||'')?.[0]||'')+'</div><div><p class="fw-600" style="font-size:14px">'+(u.first_name||'')+' '+(u.last_name||'')+'</p>'+(u.matricule?'<p class="text-muted" style="font-size:11px">'+u.matricule+'</p>':'')+'</div></div></td><td class="text-secondary" style="font-size:13px">'+u.email+'</td><td><span class="badge '+(rb[u.role]||'badge-draft')+'">'+(rl[u.role]||u.role)+'</span></td><td class="text-muted" style="font-size:13px">'+(u.department||(u.departmentIds?u.departmentIds.join(', '):'-'))+'</td><td><span class="badge '+(u.isActive?'badge-validated':'badge-rejected')+'">'+(u.isActive?'Actif':'Inactif')+'</span></td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(u.createdAt)+'</td></tr>').join('')}</tbody></table></div></div>`; },
 
-    /* ===================== JOURNAL D'AUDIT ===================== */
-    pgFaq() {
-      const faqs = JSON.parse(localStorage.getItem('iut-faqs') || '[]');
+    /* ===================== FAQ ===================== */
+    async pgFaq() {
+      let faqs = [];
+      try {
+        const rows = await SB.select('faqs', 'is_active=eq.true', 'sort_order.asc,created_at.asc');
+        if (rows) faqs = rows;
+      } catch(e) {}
       return `
-      <div class="page-header"><h1 class="page-title">FAQ dynamique</h1><button class="btn btn-primary" onclick="SA.showFaqForm()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Ajouter une question</button></div>
-      <p class="text-secondary mb-3" style="font-size:14px">Les questions ajoutÃ©es ici apparaissent dans la page FAQ publique du site. Si aucune question n'est ajoutÃ©e, les questions par dÃ©faut sont affichÃ©es.</p>
+      <div class="page-header"><h1 class="page-title">FAQ dynamique (${faqs.length})</h1><button class="btn btn-primary" onclick="SA.showFaqForm()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Ajouter une question</button></div>
+      <p class="text-secondary mb-3" style="font-size:14px">Les questions ajoutées ici apparaissent dans la page FAQ publique du site, visible par tous les étudiants.</p>
       <div class="card" style="padding:0">
-        ${faqs.length>0?'<div class="table-container"><table><thead><tr><th>Question</th><th>RÃ©ponse</th><th style="text-align:right">Actions</th></tr></thead><tbody>'+faqs.map((f,i)=>'<tr><td class="fw-600" style="max-width:300px">'+Utils.escapeHtml(f.q)+'</td><td class="text-secondary" style="font-size:13px;max-width:400px">'+Utils.escapeHtml(f.a).substring(0,100)+'...</td><td class="table-actions"><button class="table-action-btn" onclick="SA.showFaqForm('+i+')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button class="table-action-btn danger" onclick="SA.deleteFaq('+i+')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>').join('')+'</tbody></table></div>':'<div class="empty-state"><p>Aucune question personnalisÃ©e. Les questions par dÃ©faut sont affichÃ©es sur le site.</p></div>'}
+        ${faqs.length>0?'<div class="table-container"><table><thead><tr><th>#</th><th>Question</th><th>Réponse (aperçu)</th><th style="text-align:right">Actions</th></tr></thead><tbody>'+faqs.map((f,i)=>'<tr><td class="text-muted" style="font-size:13px;width:40px">'+(i+1)+'</td><td class="fw-600" style="max-width:280px">'+Utils.escapeHtml(f.question)+'</td><td class="text-secondary" style="font-size:13px;max-width:360px">'+Utils.escapeHtml(f.answer).substring(0,120)+(f.answer.length>120?'...':'')+'</td><td class="table-actions"><button class="table-action-btn" onclick="SA.showFaqForm(\''+f.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button class="table-action-btn danger" onclick="SA.deleteFaq(\''+f.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>').join('')+'</tbody></table></div>':'<div class="empty-state"><p>Aucune question dans la FAQ. Cliquez sur "Ajouter une question" pour commencer.</p></div>'}
       </div>`;
     },
-    showFaqForm(idx) {
-      const faqs = JSON.parse(localStorage.getItem('iut-faqs') || '[]');
-      const f = idx !== undefined ? faqs[idx] : null;
+    async showFaqForm(id) {
+      let f = null;
+      if (id) {
+        try {
+          const rows = await SB.select('faqs', 'id=eq.'+id);
+          if (rows && rows.length) f = rows[0];
+        } catch(e) {}
+      }
       this.modal(f?'Modifier la question':'Nouvelle question',
-        '<div class="form-group"><label class="form-label">Question *</label><input class="form-input" id="faq-q" value="'+(f?Utils.escapeHtml(f.q):'')+'"></div>'+
-        '<div class="form-group"><label class="form-label">RÃ©ponse *</label><textarea class="form-textarea" id="faq-a" rows="4">'+(f?Utils.escapeHtml(f.a):'')+'</textarea></div>',
-        '<button class="btn btn-secondary" onclick="SA.closeModal()">Annuler</button><button class="btn btn-primary" onclick="SA.saveFaq('+(idx!==undefined?idx:-1)+')">Enregistrer</button>');
+        '<div class="form-group"><label class="form-label">Question *</label><input class="form-input" id="faq-q" value="'+(f?Utils.escapeHtml(f.question):'')+'"></div>'+
+        '<div class="form-group"><label class="form-label">Réponse *</label><textarea class="form-textarea" id="faq-a" rows="5">'+(f?Utils.escapeHtml(f.answer):'')+'</textarea></div>',
+        '<button class="btn btn-secondary" onclick="SA.closeModal()">Annuler</button><button class="btn btn-primary" onclick="SA.saveFaq(\''+(id||'')+'\')">Enregistrer</button>');
     },
-    saveFaq(idx) {
-      const q=document.getElementById('faq-q').value, a=document.getElementById('faq-a').value;
-      if(!q||!a){Utils.toast('Question et rÃ©ponse requises','error');return;}
-      const faqs=JSON.parse(localStorage.getItem('iut-faqs')||'[]');
-      if(idx>=0) faqs[idx]={q,a}; else faqs.push({q,a});
-      localStorage.setItem('iut-faqs',JSON.stringify(faqs));
-      this.closeModal();Utils.toast('Enregistre','success');this.route();
+    async saveFaq(id) {
+      const question = (document.getElementById('faq-q').value||'').trim();
+      const answer = (document.getElementById('faq-a').value||'').trim();
+      if (!question || !answer) { Utils.toast('Question et réponse requises', 'error'); return; }
+      try {
+        if (id) {
+          await SB.update('faqs', 'id=eq.'+id, { question, answer });
+        } else {
+          await SB.insert('faqs', { question, answer, is_active: true, sort_order: 0 });
+        }
+        this.closeModal();
+        Utils.toast('Enregistré avec succès', 'success');
+        this.route();
+      } catch(e) {
+        Utils.toast('Erreur lors de l\'enregistrement', 'error');
+      }
     },
-    deleteFaq(idx) {
-      if(!confirm('Supprimer cette question ?'))return;
-      const faqs=JSON.parse(localStorage.getItem('iut-faqs')||'[]');
-      faqs.splice(idx,1);
-      localStorage.setItem('iut-faqs',JSON.stringify(faqs));
-      Utils.toast('Supprime','success');this.route();
+    async deleteFaq(id) {
+      if (!confirm('Supprimer cette question ?')) return;
+      try {
+        await SB.delete('faqs', 'id=eq.'+id);
+        Utils.toast('Question supprimée', 'success');
+        this.route();
+      } catch(e) {
+        Utils.toast('Erreur lors de la suppression', 'error');
+      }
     },
 
     pgAudit() {

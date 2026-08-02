@@ -27,7 +27,6 @@ const App = {
     // Pages statiques synchrones
     switch (path) {
       case '/login': content = Pages.login(); break;
-      case '/faq': content = Pages.faq(); break;
       case '/forgot-password': content = Pages.forgotPassword(); break;
     }
 
@@ -43,7 +42,9 @@ const App = {
     // Afficher le layout avec un loading
     document.getElementById('app').innerHTML = this.renderLayout('<div class="loading-page"><div class="spinner"></div><p>Chargement…</p></div>', path);
 
-    if (path === '/') {
+    if (path === '/faq') {
+      content = await Pages.faq();
+    } else if (path === '/') {
       content = await Pages.home();
     } else if (path === '/register') {
       content = await Pages.register();

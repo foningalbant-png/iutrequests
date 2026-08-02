@@ -1154,20 +1154,26 @@ const Pages = {
   // =====================================================
   //  FAQ
   // =====================================================
-  faq() {
-    const customFaqs = JSON.parse(localStorage.getItem('iut-faqs') || '[]');
-    const faqs = customFaqs.length > 0 ? customFaqs : [
-      { q: 'Comment créer un compte sur IUTRequests ?', a: 'Cliquez sur "Inscription" dans le menu, renseignez vos informations personnelles (nom, prénom, matricule, département, filière) et définissez un mot de passe. Votre compte sera immédiatement actif.' },
-      { q: 'Quels types de requêtes puis-je soumettre ?', a: 'La plateforme accepte 18 types de requêtes : réclamation de note, attestation de scolarité, convention de stage, justification d\'absence, et bien d\'autres. Consultez la liste complète sur la page d\'accueil.' },
-      { q: 'Comment suivre l\'avancement de ma requête ?', a: 'Après connexion, accédez à votre tableau de bord. Chaque requête affiche son statut actuel. Vous recevez également une notification à chaque changement de statut.' },
-      { q: 'Puis-je joindre des documents à ma requête ?', a: 'Oui, vous pouvez joindre autant de documents que nécessaire, dans tous les formats. Il est recommandé de joindre les pièces justificatives demandées pour accélérer le traitement.' },
-      { q: 'Que faire si ma requête reste sans réponse ?', a: 'Vous pouvez relancer votre requête depuis la page de détail. L\'administrateur en charge recevra une notification de relance.' },
-      { q: 'Comment savoir si ma requête a été lue ?', a: 'Lorsque l\'administrateur consulte votre requête pour la première fois, vous recevez automatiquement une notification "Requête consultée".' },
-      { q: 'Puis-je supprimer une requête ?', a: 'Oui, vous pouvez supprimer une requête à tout moment depuis la page de détail de celle-ci.' },
-      { q: 'Comment contacter l\'administration après validation ?', a: 'Une fois votre requête validée, l\'administrateur peut vous contacter par téléphone, WhatsApp, e-mail ou vous proposer un rendez-vous.' },
-      { q: 'La plateforme est-elle disponible en anglais ?', a: 'Oui, IUTRequests est disponible en français et en anglais. Utilisez le bouton de changement de langue dans le menu pour basculer.' },
-      { q: 'Comment réinitialiser mon mot de passe ?', a: 'Connectez-vous à votre compte et allez dans "Profil" pour changer votre mot de passe.' },
-    ];
+  async faq() {
+    let faqs = [];
+    try {
+      const rows = await SB.select('faqs', 'is_active=eq.true', 'sort_order.asc,created_at.asc');
+      if (rows && rows.length) faqs = rows.map(f => ({ q: f.question, a: f.answer }));
+    } catch(e) {}
+    if (!faqs.length) {
+      faqs = [
+        { q: 'Comment créer un compte sur IUTRequests ?', a: 'Cliquez sur "Inscription" dans le menu, renseignez vos informations personnelles (nom, prénom, matricule, département, filière) et définissez un mot de passe. Votre compte sera immédiatement actif.' },
+        { q: 'Quels types de requêtes puis-je soumettre ?', a: 'La plateforme accepte 18 types de requêtes : réclamation de note, attestation de scolarité, convention de stage, justification d\'absence, et bien d\'autres. Consultez la liste complète sur la page d\'accueil.' },
+        { q: 'Comment suivre l\'avancement de ma requête ?', a: 'Après connexion, accédez à votre tableau de bord. Chaque requête affiche son statut actuel. Vous recevez également une notification à chaque changement de statut.' },
+        { q: 'Puis-je joindre des documents à ma requête ?', a: 'Oui, vous pouvez joindre autant de documents que nécessaire, dans tous les formats. Il est recommandé de joindre les pièces justificatives demandées pour accélérer le traitement.' },
+        { q: 'Que faire si ma requête reste sans réponse ?', a: 'Vous pouvez relancer votre requête depuis la page de détail. L\'administrateur en charge recevra une notification de relance.' },
+        { q: 'Comment savoir si ma requête a été lue ?', a: 'Lorsque l\'administrateur consulte votre requête pour la première fois, vous recevez automatiquement une notification "Requête consultée".' },
+        { q: 'Puis-je supprimer une requête ?', a: 'Oui, vous pouvez supprimer une requête à tout moment depuis la page de détail de celle-ci.' },
+        { q: 'Comment contacter l\'administration après validation ?', a: 'Une fois votre requête validée, l\'administrateur peut vous contacter par téléphone, WhatsApp, e-mail ou vous proposer un rendez-vous.' },
+        { q: 'La plateforme est-elle disponible en anglais ?', a: 'Oui, IUTRequests est disponible en français et en anglais. Utilisez le bouton de changement de langue dans le menu pour basculer.' },
+        { q: 'Comment réinitialiser mon mot de passe ?', a: 'Connectez-vous à votre compte et allez dans "Profil" pour changer votre mot de passe.' },
+      ];
+    }
     return `
     <div style="max-width:800px;margin:0 auto;padding:40px 20px">
       <div class="text-center mb-4"><h1>Questions fréquentes</h1><p class="text-secondary mt-1">Trouvez des réponses aux questions les plus courantes sur IUTRequests.</p></div>

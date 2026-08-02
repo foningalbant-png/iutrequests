@@ -17,6 +17,7 @@ DROP TABLE IF EXISTS request_templates CASCADE;
 DROP TABLE IF EXISTS request_categories CASCADE;
 DROP TABLE IF EXISTS profiles CASCADE;
 DROP TABLE IF EXISTS programs CASCADE;
+DROP TABLE IF EXISTS faqs CASCADE;
 DROP TABLE IF EXISTS departments CASCADE;
 DROP TYPE IF EXISTS request_status CASCADE;
 DROP TYPE IF EXISTS user_role CASCADE;
@@ -161,6 +162,16 @@ CREATE TABLE audit_logs (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- FAQ dynamique
+CREATE TABLE faqs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  sort_order INT DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- Index
 CREATE INDEX idx_profiles_email ON profiles(email);
 CREATE INDEX idx_profiles_role ON profiles(role);
@@ -180,6 +191,7 @@ ALTER TABLE request_status_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE request_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE faqs ENABLE ROW LEVEL SECURITY;
 
 -- Politiques RLS (autoriser l acces public pour le moment)
 CREATE POLICY "allow_all" ON departments FOR ALL USING (true) WITH CHECK (true);
@@ -191,10 +203,24 @@ CREATE POLICY "allow_all" ON request_status_history FOR ALL USING (true) WITH CH
 CREATE POLICY "allow_all" ON request_messages FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "allow_all" ON notifications FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "allow_all" ON audit_logs FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all" ON faqs FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================
 -- DONNEES INITIALES
 -- ============================================
+
+-- FAQ initiales (10 questions)
+INSERT INTO faqs (question, answer, sort_order) VALUES
+('Comment créer un compte sur IUTRequests ?', 'Cliquez sur "Inscription" dans le menu, renseignez vos informations personnelles (nom, prénom, matricule, département, filière) et définissez un mot de passe. Votre compte sera immédiatement actif.', 1),
+('Quels types de requêtes puis-je soumettre ?', 'La plateforme accepte 18 types de requêtes : réclamation de note, attestation de scolarité, convention de stage, justification d''absence, et bien d''autres. Consultez la liste complète sur la page d''accueil.', 2),
+('Comment suivre l''avancement de ma requête ?', 'Après connexion, accédez à votre tableau de bord. Chaque requête affiche son statut actuel. Vous recevez également une notification à chaque changement de statut.', 3),
+('Puis-je joindre des documents à ma requête ?', 'Oui, vous pouvez joindre autant de documents que nécessaire, dans tous les formats. Il est recommandé de joindre les pièces justificatives demandées pour accélérer le traitement.', 4),
+('Que faire si ma requête reste sans réponse ?', 'Vous pouvez relancer votre requête depuis la page de détail. L''administrateur en charge recevra une notification de relance.', 5),
+('Comment savoir si ma requête a été lue ?', 'Lorsque l''administrateur consulte votre requête pour la première fois, vous recevez automatiquement une notification "Requête consultée".', 6),
+('Puis-je supprimer une requête ?', 'Oui, vous pouvez supprimer une requête à tout moment depuis la page de détail de celle-ci.', 7),
+('Comment contacter l''administration après validation ?', 'Une fois votre requête validée, l''administrateur peut vous contacter par téléphone, WhatsApp, e-mail ou vous proposer un rendez-vous.', 8),
+('La plateforme est-elle disponible en anglais ?', 'Oui, IUTRequests est disponible en français et en anglais. Utilisez le bouton de changement de langue dans le menu pour basculer.', 9),
+('Comment réinitialiser mon mot de passe ?', 'Connectez-vous à votre compte et allez dans "Profil" pour changer votre mot de passe.', 10);
 
 -- 13 Departements
 INSERT INTO departments (name, code, is_active, sort_order) VALUES
