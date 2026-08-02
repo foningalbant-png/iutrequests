@@ -146,6 +146,10 @@ const App = {
                   <div class="dropdown-header-name">${(user.first_name||user.firstName||'')} ${(user.last_name||user.lastName||'')}</div>
                   <div class="dropdown-header-email">${user.email}</div>
                 </div>
+                <a href="#/dashboard" class="dropdown-item" onclick="App.closeDropdowns()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                  Tableau de bord
+                </a>
                 <a href="#/profile" class="dropdown-item" onclick="App.closeDropdowns()">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                   ${t('nav.profile')}
