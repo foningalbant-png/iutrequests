@@ -638,8 +638,8 @@ const Pages = {
     <div class="card">
       <div class="req-filter-bar">
         <div class="search-wrapper" style="flex:1;min-width:200px">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" class="form-input" id="search-input" placeholder="Rechercher par référence ou objet..." value="${Utils.escapeHtml(searchTerm)}" oninput="Pages.filterRequests()">
+          <input type="text" class="form-input" id="search-input" placeholder="Rechercher par référence ou objet..." value="${Utils.escapeHtml(searchTerm)}" oninput="Pages.filterRequests()" onkeydown="if(event.key==='Enter')Pages.filterRequests()">
+          <button class="search-btn" onclick="Pages.filterRequests()" title="Rechercher"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
         </div>
         <select class="form-select" style="width:auto;min-width:160px" id="status-filter" onchange="Pages.filterRequests()">
           <option value="">Tous les statuts</option>

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <link rel="stylesheet" href="../assets/css/style.css?v=14">
+  <link rel="stylesheet" href="../assets/css/style.css?v=15">
 </head>
 <body>
   <div id="app"><div class="loading-page" style="min-height:100vh"><div class="spinner"></div><p>Chargement...</p></div></div>
@@ -44,7 +44,7 @@
         case '/profile': c = this.pgProfile(); break;
         default:
           if (path.startsWith('/requests/')) c = await this.pgReqDetail(path.split('/')[2]);
-          else c = '<div class="empty-state mt-4"><h2>Page non trouvée</h2></div>';
+          else c = '<div class="empty-state mt-4"><h2>Page non trouvÃ©e</h2></div>';
       }
       app.innerHTML = this.layout(c, path);
       window.scrollTo(0, 0);
@@ -54,7 +54,7 @@
       const u = Auth.getUser();
       const links = [
         {p:'/dashboard',l:'Tableau de bord',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>'},
-        {p:'/requests',l:'Requêtes',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>'},
+        {p:'/requests',l:'RequÃªtes',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>'},
         {p:'/notifications',l:'Notifications',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>'},
         {p:'/profile',l:'Profil',i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'},
       ];
@@ -67,7 +67,7 @@
         <div class="header-right">
           <button class="header-btn" onclick="Admin.toggleTheme()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${document.documentElement.getAttribute('data-theme')==='dark'?'<circle cx="12" cy="12" r="5"/>':'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'}</svg></button>
           <div class="user-menu"><button class="user-menu-trigger" onclick="this.nextElementSibling.classList.toggle('hidden')"><div class="user-avatar">${(u.first_name||'A')[0]}${(u.last_name||'')[0]||''}</div><span class="user-name">${u.first_name||''} ${u.last_name||''}</span></button>
-            <div class="dropdown hidden"><div class="dropdown-header"><div class="dropdown-header-name">${u.first_name||''} ${u.last_name||''}</div><div class="dropdown-header-email">${u.email}</div></div><a href="#/profile" class="dropdown-item" onclick="document.querySelectorAll('.dropdown').forEach(d=>d.classList.add('hidden'))">Profil</a><div class="dropdown-divider"></div><button class="dropdown-item dropdown-item-danger" onclick="Auth.logout();location.hash='#/login'">Déconnexion</button></div>
+            <div class="dropdown hidden"><div class="dropdown-header"><div class="dropdown-header-name">${u.first_name||''} ${u.last_name||''}</div><div class="dropdown-header-email">${u.email}</div></div><a href="#/profile" class="dropdown-item" onclick="document.querySelectorAll('.dropdown').forEach(d=>d.classList.add('hidden'))">Profil</a><div class="dropdown-divider"></div><button class="dropdown-item dropdown-item-danger" onclick="Auth.logout();location.hash='#/login'">DÃ©connexion</button></div>
           </div>
         </div>
       </div></header>
@@ -120,12 +120,12 @@
       return `
       <div class="page-header"><div><h1 class="page-title">Bienvenue, ${u.first_name||''}</h1><p class="page-subtitle">Administrateur</p></div></div>
       <div class="stats-grid mb-3">
-        <div class="card stat-card"><div class="stat-icon" style="background:var(--primary-light);color:var(--primary)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div><div class="stat-value">${reqs.length}</div><div class="stat-label">Total requêtes</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--primary-light);color:var(--primary)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div><div class="stat-value">${reqs.length}</div><div class="stat-label">Total requÃªtes</div></div></div>
         <div class="card stat-card"><div class="stat-icon" style="background:var(--yellow-light);color:var(--yellow-dark)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="stat-value">${pending}</div><div class="stat-label">En attente</div></div></div>
         <div class="card stat-card"><div class="stat-icon" style="background:#E3F2FD;color:#1565C0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div><div class="stat-value">${inProgress}</div><div class="stat-label">En cours</div></div></div>
-        <div class="card stat-card"><div class="stat-icon" style="background:var(--green-light);color:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><div class="stat-value">${validated}</div><div class="stat-label">Validées</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--green-light);color:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><div class="stat-value">${validated}</div><div class="stat-label">ValidÃ©es</div></div></div>
       </div>
-      ${oldest.length>0?'<div class="card"><div class="card-header"><span class="card-title">Requêtes en attente les plus anciennes</span><a href="#/requests" class="btn btn-ghost btn-sm">Tout</a></div><div class="table-container"><table><thead><tr><th>Référence</th><th>Objet</th><th>Étudiant</th><th>Matricule</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+oldest.map(r=>'<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td class="font-mono text-primary" style="font-size:13px">'+r.reference_number+'</td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.student_name||'')+'</td><td class="text-muted" style="font-size:13px">'+(r.student_matricule||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.created_at)+'</td></tr>').join('')+'</tbody></table></div></div>':'<div class="card"><div class="empty-state"><p>Aucune requête en attente.</p></div></div>'}`;
+      ${oldest.length>0?'<div class="card"><div class="card-header"><span class="card-title">RequÃªtes en attente les plus anciennes</span><a href="#/requests" class="btn btn-ghost btn-sm">Tout</a></div><div class="table-container"><table><thead><tr><th>RÃ©fÃ©rence</th><th>Objet</th><th>Ã‰tudiant</th><th>Matricule</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+oldest.map(r=>'<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td class="font-mono text-primary" style="font-size:13px">'+r.reference_number+'</td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.student_name||'')+'</td><td class="text-muted" style="font-size:13px">'+(r.student_matricule||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.created_at)+'</td></tr>').join('')+'</tbody></table></div></div>':'<div class="card"><div class="empty-state"><p>Aucune requÃªte en attente.</p></div></div>'}`;
     },
 
     filterReqs(q) {
@@ -140,7 +140,7 @@
       const counter = document.getElementById('adm-reqs-count');
       const empty = document.getElementById('adm-reqs-empty');
       const clearBtn = document.getElementById('adm-reqs-clear');
-      if (counter) counter.textContent = 'Requêtes (' + visible + ')';
+      if (counter) counter.textContent = 'RequÃªtes (' + visible + ')';
       if (empty) empty.style.display = visible === 0 ? '' : 'none';
       if (clearBtn) clearBtn.style.display = q ? '' : 'none';
     },
@@ -152,11 +152,11 @@
     async pgReqs() {
       const all = (await RequestStore.getAll()).slice().reverse();
       return `
-      <div class="page-header"><h1 id="adm-reqs-count" class="page-title">Requêtes (${all.length})</h1></div>
+      <div class="page-header"><h1 id="adm-reqs-count" class="page-title">RequÃªtes (${all.length})</h1></div>
       <div class="card">
-        <div class="filters"><div class="search-wrapper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="form-input" id="adm-search" placeholder="Rechercher par référence, objet ou étudiant..." oninput="Admin.filterReqs(this.value)" onkeydown="if(event.key==='Enter')Admin.filterReqs(this.value)"><button class="search-btn" onclick="Admin.filterReqs(document.getElementById('adm-search').value)">Rechercher</button></div><button id="adm-reqs-clear" class="btn btn-ghost btn-sm" style="display:none" onclick="Admin.clearReqsFilter()">Réinitialiser</button></div>
-        <div class="table-container"><table><thead><tr><th>Référence</th><th>Objet</th><th>Étudiant</th><th>Matricule</th><th>Statut</th><th>Date</th></tr></thead><tbody id="adm-reqs-tbody">${all.map(r=>'<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'" data-search="'+((r.reference_number||'')+' '+(r.title||'')+' '+(r.student_name||'')+' '+(r.student_matricule||'')).toLowerCase().replace(/"/g,'')+'"><td class="font-mono text-primary" style="font-size:13px">'+r.reference_number+'</td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.student_name||'')+'</td><td class="text-muted" style="font-size:13px">'+(r.student_matricule||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.created_at)+'</td></tr>').join('')}</tbody></table></div>
-        <div id="adm-reqs-empty" class="empty-state" style="display:${all.length===0?'':'none'}"><p>Aucune requête</p></div>
+        <div class="filters"><div class="search-wrapper"><input type="text" class="form-input" id="adm-search" placeholder="Rechercher par rÃ©fÃ©rence, objet ou Ã©tudiant..." oninput="Admin.filterReqs(this.value)" onkeydown="if(event.key==='Enter')Admin.filterReqs(this.value)"><button class="search-btn" onclick="Admin.filterReqs(document.getElementById('adm-search').value)" title="Rechercher"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button></div><button id="adm-reqs-clear" class="btn btn-ghost btn-sm" style="display:none" onclick="Admin.clearReqsFilter()">RÃ©initialiser</button></div>
+        <div class="table-container"><table><thead><tr><th>RÃ©fÃ©rence</th><th>Objet</th><th>Ã‰tudiant</th><th>Matricule</th><th>Statut</th><th>Date</th></tr></thead><tbody id="adm-reqs-tbody">${all.map(r=>'<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'" data-search="'+((r.reference_number||'')+' '+(r.title||'')+' '+(r.student_name||'')+' '+(r.student_matricule||'')).toLowerCase().replace(/"/g,'')+'"><td class="font-mono text-primary" style="font-size:13px">'+r.reference_number+'</td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.student_name||'')+'</td><td class="text-muted" style="font-size:13px">'+(r.student_matricule||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.created_at)+'</td></tr>').join('')}</tbody></table></div>
+        <div id="adm-reqs-empty" class="empty-state" style="display:${all.length===0?'':'none'}"><p>Aucune requÃªte</p></div>
       </div>`;
     },
 
@@ -176,51 +176,51 @@
       const gap = '<div style="height:7px"></div>';
       const map = {
         SUBMITTED: [
-          B('Prendre en charge', 'btn-primary', "Admin.quickAction('"+id+"','IN_PROGRESS','Requête prise en charge')", ico.play),
+          B('Prendre en charge', 'btn-primary', "Admin.quickAction('"+id+"','IN_PROGRESS','RequÃªte prise en charge')", ico.play),
           gap,
           B('Demander des documents', 'btn-outline', "Admin.askDocs('"+id+"')", ico.doc),
           gap,
           B('Rejeter', 'btn-danger', "Admin.rejectReq('"+id+"')", ico.x),
         ],
         RECEIVED: [
-          B('Prendre en charge', 'btn-primary', "Admin.quickAction('"+id+"','IN_PROGRESS','Requête prise en charge')", ico.play),
+          B('Prendre en charge', 'btn-primary', "Admin.quickAction('"+id+"','IN_PROGRESS','RequÃªte prise en charge')", ico.play),
           gap,
           B('Demander des documents', 'btn-outline', "Admin.askDocs('"+id+"')", ico.doc),
           gap,
           B('Rejeter', 'btn-danger', "Admin.rejectReq('"+id+"')", ico.x),
         ],
         IN_PROGRESS: [
-          B('Valider la requête', 'btn-success', "Admin.validateReq('"+id+"')", ico.check),
+          B('Valider la requÃªte', 'btn-success', "Admin.validateReq('"+id+"')", ico.check),
           gap,
           B('Demander des documents', 'btn-outline', "Admin.askDocs('"+id+"')", ico.doc),
           gap,
           B('Rejeter', 'btn-danger', "Admin.rejectReq('"+id+"')", ico.x),
         ],
         AWAITING_DOCUMENTS: [
-          B('Reprendre le traitement', 'btn-primary', "Admin.quickAction('"+id+"','IN_PROGRESS','Documents reçus, traitement en cours')", ico.play),
+          B('Reprendre le traitement', 'btn-primary', "Admin.quickAction('"+id+"','IN_PROGRESS','Documents reÃ§us, traitement en cours')", ico.play),
           gap,
-          B('Valider la requête', 'btn-success', "Admin.validateReq('"+id+"')", ico.check),
+          B('Valider la requÃªte', 'btn-success', "Admin.validateReq('"+id+"')", ico.check),
           gap,
           B('Rejeter', 'btn-danger', "Admin.rejectReq('"+id+"')", ico.x),
         ],
         VALIDATED: [
-          B('Marquer comme traitée', 'btn-success', "Admin.quickAction('"+id+"','PROCESSED','Requête finalisée et remise à l\\'étudiant')", ico.done),
+          B('Marquer comme traitÃ©e', 'btn-success', "Admin.quickAction('"+id+"','PROCESSED','RequÃªte finalisÃ©e et remise Ã  l\\'Ã©tudiant')", ico.done),
           gap,
-          B('Fermer le dossier', 'btn-secondary', "Admin.quickAction('"+id+"','CLOSED','Dossier fermé')", ico.lock),
+          B('Fermer le dossier', 'btn-secondary', "Admin.quickAction('"+id+"','CLOSED','Dossier fermÃ©')", ico.lock),
         ],
         PROCESSED: [
-          B('Fermer le dossier', 'btn-secondary', "Admin.quickAction('"+id+"','CLOSED','Dossier fermé')", ico.lock),
+          B('Fermer le dossier', 'btn-secondary', "Admin.quickAction('"+id+"','CLOSED','Dossier fermÃ©')", ico.lock),
           gap,
-          B('Rouvrir', 'btn-outline', "Admin.quickAction('"+id+"','REOPENED','Requête réouverte sur demande')", ico.redo),
+          B('Rouvrir', 'btn-outline', "Admin.quickAction('"+id+"','REOPENED','RequÃªte rÃ©ouverte sur demande')", ico.redo),
         ],
         REJECTED: [
-          B('Rouvrir', 'btn-outline', "Admin.quickAction('"+id+"','REOPENED','Requête réouverte suite à réclamation')", ico.redo),
+          B('Rouvrir', 'btn-outline', "Admin.quickAction('"+id+"','REOPENED','RequÃªte rÃ©ouverte suite Ã  rÃ©clamation')", ico.redo),
         ],
         CLOSED: [
-          B('Rouvrir', 'btn-outline', "Admin.quickAction('"+id+"','REOPENED','Requête réouverte')", ico.redo),
+          B('Rouvrir', 'btn-outline', "Admin.quickAction('"+id+"','REOPENED','RequÃªte rÃ©ouverte')", ico.redo),
         ],
         REOPENED: [
-          B('Prendre en charge', 'btn-primary', "Admin.quickAction('"+id+"','IN_PROGRESS','Requête reprise en charge')", ico.play),
+          B('Prendre en charge', 'btn-primary', "Admin.quickAction('"+id+"','IN_PROGRESS','RequÃªte reprise en charge')", ico.play),
           gap,
           B('Rejeter', 'btn-danger', "Admin.rejectReq('"+id+"')", ico.x),
         ],
@@ -233,16 +233,16 @@
 
     async pgReqDetail(id) {
       const req = await RequestStore.getById(id);
-      if (!req) return '<div class="empty-state"><h2>Requête non trouvée</h2><a href="#/requests" class="btn btn-primary mt-2">Retour</a></div>';
+      if (!req) return '<div class="empty-state"><h2>RequÃªte non trouvÃ©e</h2><a href="#/requests" class="btn btn-primary mt-2">Retour</a></div>';
       const u = Auth.getUser();
       const adminName = (u.first_name||'')+' '+(u.last_name||'');
 
       // AUTO: premiere vue -> SUBMITTED passe a RECEIVED
       if (!req.first_viewed_at) {
         await RequestStore.update(id, { first_viewed_at: new Date().toISOString() });
-        if (req.student_id) await NotifStore.create({ user_id: req.student_id, type: 'REQUEST_READ', title: 'Requête prise en charge', message: 'Votre requête '+req.reference_number+' a été reçue et prise en charge par l\'administration.', request_id: req.id, request_ref: req.reference_number });
+        if (req.student_id) await NotifStore.create({ user_id: req.student_id, type: 'REQUEST_READ', title: 'RequÃªte prise en charge', message: 'Votre requÃªte '+req.reference_number+' a Ã©tÃ© reÃ§ue et prise en charge par l\'administration.', request_id: req.id, request_ref: req.reference_number });
         if (req.status === 'SUBMITTED') {
-          await RequestStore.updateStatus(id, 'RECEIVED', 'Requête reçue et consultée par l\'administration', adminName);
+          await RequestStore.updateStatus(id, 'RECEIVED', 'RequÃªte reÃ§ue et consultÃ©e par l\'administration', adminName);
           req.status = 'RECEIVED';
         }
       }
@@ -261,29 +261,29 @@
         <div class="flex-1"><h1 class="page-title" style="font-size:1.25rem">${Utils.escapeHtml(req.title)}</h1><p class="text-muted font-mono" style="font-size:13px">${req.reference_number}</p></div>
         ${Utils.statusBadge(req.status)}
         <button class="btn btn-ghost btn-sm" onclick="window.print()">Imprimer</button>
-        <button class="btn btn-danger btn-sm" onclick="if(confirm('Supprimer cette requête ?')){RequestStore.delete('${id}').then(()=>{Utils.toast('Supprimée','success');location.hash='#/requests'})}">Supprimer</button>
+        <button class="btn btn-danger btn-sm" onclick="if(confirm('Supprimer cette requÃªte ?')){RequestStore.delete('${id}').then(()=>{Utils.toast('SupprimÃ©e','success');location.hash='#/requests'})}">Supprimer</button>
       </div>
       <div class="grid" style="grid-template-columns:2fr 1fr;gap:24px">
         <div>
           <div class="card mb-3">
             <h3 class="card-title mb-2">Description</h3>
             <p style="white-space:pre-wrap;font-size:14px;color:var(--text-secondary)">${Utils.escapeHtml(req.description)}</p>
-            ${(req.file_names||[]).length>0?'<h4 style="margin-top:16px;font-size:13px;color:var(--text-muted)">Pièces jointes ('+req.file_names.length+') :</h4><div class="file-list">'+req.file_names.map((name,i)=>{const url=fileUrls[i]?(typeof fileUrls[i]==='string'?fileUrls[i]:fileUrls[i].url):null;return '<div class="file-item"><div class="file-item-info"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg> '+Utils.escapeHtml(name)+'</div>'+(url?'<a href="'+url+'" target="_blank" class="btn btn-sm btn-outline" style="font-size:11px">Télécharger</a>':'')+'</div>'}).join('')+'</div>':''}
+            ${(req.file_names||[]).length>0?'<h4 style="margin-top:16px;font-size:13px;color:var(--text-muted)">PiÃ¨ces jointes ('+req.file_names.length+') :</h4><div class="file-list">'+req.file_names.map((name,i)=>{const url=fileUrls[i]?(typeof fileUrls[i]==='string'?fileUrls[i]:fileUrls[i].url):null;return '<div class="file-item"><div class="file-item-info"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg> '+Utils.escapeHtml(name)+'</div>'+(url?'<a href="'+url+'" target="_blank" class="btn btn-sm btn-outline" style="font-size:11px">TÃ©lÃ©charger</a>':'')+'</div>'}).join('')+'</div>':''}
           </div>
           <div class="card mb-3">
             <h3 class="card-title mb-2">Messages</h3>
             <div class="messages-container">${msgs.map(m=>'<div class="message '+(m.sender_role==='ADMIN'?'message-sent':'message-received')+'"><div class="message-bubble"><div class="message-sender">'+Utils.escapeHtml(m.sender_name||'')+(m.sender_role==='ADMIN'?' (Admin)':'')+'</div>'+Utils.escapeHtml(m.content)+'<div class="message-meta">'+Utils.formatDateTime(m.created_at)+'</div></div></div>').join('')||'<p class="text-center text-muted" style="padding:20px;font-size:14px">Aucun message</p>'}</div>
             <div class="message-input-bar">
-              <input type="text" class="form-input" id="msg-input" placeholder="Écrire un message à l'étudiant..." onkeydown="if(event.key==='Enter')Admin.sendMsg('${id}')">
+              <input type="text" class="form-input" id="msg-input" placeholder="Ã‰crire un message Ã  l'Ã©tudiant..." onkeydown="if(event.key==='Enter')Admin.sendMsg('${id}')">
               <button class="btn btn-primary" onclick="Admin.sendMsg('${id}')">Envoyer</button>
             </div>
           </div>
         </div>
         <div>
           <div class="card mb-3">
-            <h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Étudiant</h4>
+            <h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Ã‰tudiant</h4>
             <p class="fw-600" style="font-size:16px">${req.student_name||'-'}</p>
-            <p style="font-size:13px;color:var(--primary);font-weight:600;margin-top:4px">Matricule : ${req.student_matricule||'Non renseigné'}</p>
+            <p style="font-size:13px;color:var(--primary);font-weight:600;margin-top:4px">Matricule : ${req.student_matricule||'Non renseignÃ©'}</p>
             <p class="text-muted" style="font-size:13px">${req.student_email||''}</p>
             <p class="text-muted" style="font-size:13px">${req.student_phone||''}</p>
             <p class="text-muted" style="font-size:13px">${req.department||''} ${req.program?' - '+req.program:''}</p>
@@ -304,17 +304,17 @@
                 <button class="btn btn-outline btn-sm" onclick="Admin.changeStatus('${id}')">Appliquer</button>
               </div>
             </details>
-            ${adminOpts?'<hr style="border:none;border-top:1px solid var(--border);margin:14px 0"><div class="form-group"><label class="form-label">Transférer à</label><select class="form-select" id="transfer-sel"><option value="">-- Choisir un admin --</option>'+adminOpts+'</select></div><button class="btn btn-outline btn-sm" onclick="Admin.transferReq(\''+id+'\')">Transférer la requête</button>':''}
+            ${adminOpts?'<hr style="border:none;border-top:1px solid var(--border);margin:14px 0"><div class="form-group"><label class="form-label">TransfÃ©rer Ã </label><select class="form-select" id="transfer-sel"><option value="">-- Choisir un admin --</option>'+adminOpts+'</select></div><button class="btn btn-outline btn-sm" onclick="Admin.transferReq(\''+id+'\')">TransfÃ©rer la requÃªte</button>':''}
           </div>
 
           <div class="card mb-3">
             <h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Informations</h4>
             <div style="font-size:14px">
-              <div class="flex justify-between mb-1"><span class="text-muted">Catégorie</span><span>${req.category_name||'-'}</span></div>
-              <div class="flex justify-between mb-1"><span class="text-muted">Département</span><span>${req.department||'-'}</span></div>
+              <div class="flex justify-between mb-1"><span class="text-muted">CatÃ©gorie</span><span>${req.category_name||'-'}</span></div>
+              <div class="flex justify-between mb-1"><span class="text-muted">DÃ©partement</span><span>${req.department||'-'}</span></div>
               <div class="flex justify-between mb-1"><span class="text-muted">Soumise le</span><span style="font-size:12px">${Utils.formatDateTime(req.created_at)}</span></div>
               <div class="flex justify-between mb-1"><span class="text-muted">Relances</span><span>${req.reminder_count||0}</span></div>
-              ${req.priority && req.priority!=='NORMALE' ? '<div class="flex justify-between mb-1"><span class="text-muted">Priorité</span><span style="color:var(--red);font-weight:600">'+req.priority+'</span></div>' : ''}
+              ${req.priority && req.priority!=='NORMALE' ? '<div class="flex justify-between mb-1"><span class="text-muted">PrioritÃ©</span><span style="color:var(--red);font-weight:600">'+req.priority+'</span></div>' : ''}
             </div>
           </div>
           ${hist.length>0?'<div class="card"><h4 style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Historique des statuts</h4><div class="timeline">'+hist.map(h=>'<div class="timeline-item"><div class="timeline-content">'+Utils.statusBadge(h.status)+(h.reason?'<p style="font-size:12px;color:var(--text-muted);margin-top:4px">'+Utils.escapeHtml(h.reason)+'</p>':'')+'<p class="timeline-date">'+(h.changed_by||'')+' &bull; '+Utils.formatDateTime(h.created_at)+'</p></div></div>').join('')+'</div></div>':''}
@@ -328,10 +328,10 @@
       const u = Auth.getUser();
       const content = input.value.trim();
       await RequestStore.addMessage(id, u.id, (u.first_name||'')+' '+(u.last_name||''), 'ADMIN', content);
-      // AUTO: message envoyé -> passe EN COURS si encore en statut initial
+      // AUTO: message envoyÃ© -> passe EN COURS si encore en statut initial
       const req = await RequestStore.getById(id);
       if (req && ['SUBMITTED','RECEIVED'].includes(req.status)) {
-        await RequestStore.updateStatus(id, 'IN_PROGRESS', 'Traitement initié suite à un échange avec l\'étudiant', (u.first_name||'')+' '+(u.last_name||''));
+        await RequestStore.updateStatus(id, 'IN_PROGRESS', 'Traitement initiÃ© suite Ã  un Ã©change avec l\'Ã©tudiant', (u.first_name||'')+' '+(u.last_name||''));
       }
       this.route();
     },
@@ -339,42 +339,42 @@
     async quickAction(id, newStatus, reason) {
       const u = Auth.getUser();
       await RequestStore.updateStatus(id, newStatus, reason, (u.first_name||'')+' '+(u.last_name||''));
-      Utils.toast('Statut mis à jour : ' + (CONFIG.STATUSES[newStatus]?.fr || newStatus), 'success');
+      Utils.toast('Statut mis Ã  jour : ' + (CONFIG.STATUSES[newStatus]?.fr || newStatus), 'success');
       this.route();
     },
 
     async validateReq(id) {
-      const note = prompt('Note pour l\'étudiant (optionnel) :');
+      const note = prompt('Note pour l\'Ã©tudiant (optionnel) :');
       if (note === null) return;
       const u = Auth.getUser();
-      const reason = note.trim() || 'Requête validée par l\'administration';
+      const reason = note.trim() || 'RequÃªte validÃ©e par l\'administration';
       await RequestStore.updateStatus(id, 'VALIDATED', reason, (u.first_name||'')+' '+(u.last_name||''));
       if (note.trim()) {
-        await RequestStore.addMessage(id, u.id, (u.first_name||'')+' '+(u.last_name||''), 'ADMIN', 'Votre requête a été validée. ' + note.trim());
+        await RequestStore.addMessage(id, u.id, (u.first_name||'')+' '+(u.last_name||''), 'ADMIN', 'Votre requÃªte a Ã©tÃ© validÃ©e. ' + note.trim());
       }
-      Utils.toast('Requête validée avec succès', 'success');
+      Utils.toast('RequÃªte validÃ©e avec succÃ¨s', 'success');
       this.route();
     },
 
     async askDocs(id) {
-      const detail = prompt('Préciser les documents requis :');
+      const detail = prompt('PrÃ©ciser les documents requis :');
       if (detail === null) return;
       const u = Auth.getUser();
-      const msg = 'L\'administration vous demande de fournir des documents complémentaires.' + (detail.trim() ? '\n\nDocuments requis : ' + detail.trim() : '');
+      const msg = 'L\'administration vous demande de fournir des documents complÃ©mentaires.' + (detail.trim() ? '\n\nDocuments requis : ' + detail.trim() : '');
       await RequestStore.addMessage(id, u.id, (u.first_name||'')+' '+(u.last_name||''), 'ADMIN', msg);
-      await RequestStore.updateStatus(id, 'AWAITING_DOCUMENTS', detail.trim() || 'Documents complémentaires demandés', (u.first_name||'')+' '+(u.last_name||''));
-      Utils.toast('Demande de documents envoyée à l\'étudiant', 'success');
+      await RequestStore.updateStatus(id, 'AWAITING_DOCUMENTS', detail.trim() || 'Documents complÃ©mentaires demandÃ©s', (u.first_name||'')+' '+(u.last_name||''));
+      Utils.toast('Demande de documents envoyÃ©e Ã  l\'Ã©tudiant', 'success');
       this.route();
     },
 
     async rejectReq(id) {
       const motif = prompt('Motif du rejet (obligatoire) :');
       if (motif === null) return;
-      if (!motif.trim()) { Utils.toast('Le motif est obligatoire pour rejeter une requête', 'error'); return; }
+      if (!motif.trim()) { Utils.toast('Le motif est obligatoire pour rejeter une requÃªte', 'error'); return; }
       const u = Auth.getUser();
-      await RequestStore.addMessage(id, u.id, (u.first_name||'')+' '+(u.last_name||''), 'ADMIN', 'Votre requête a été rejetée. Motif : ' + motif.trim());
+      await RequestStore.addMessage(id, u.id, (u.first_name||'')+' '+(u.last_name||''), 'ADMIN', 'Votre requÃªte a Ã©tÃ© rejetÃ©e. Motif : ' + motif.trim());
       await RequestStore.updateStatus(id, 'REJECTED', motif.trim(), (u.first_name||'')+' '+(u.last_name||''));
-      Utils.toast('Requête rejetée', 'success');
+      Utils.toast('RequÃªte rejetÃ©e', 'success');
       this.route();
     },
 
@@ -383,23 +383,23 @@
       const r = document.getElementById('status-reason').value;
       const u = Auth.getUser();
       await RequestStore.updateStatus(id, s, r, (u.first_name||'')+' '+(u.last_name||''));
-      Utils.toast('Statut mis à jour', 'success');
+      Utils.toast('Statut mis Ã  jour', 'success');
       this.route();
     },
 
     async transferReq(id) {
       const adminId = document.getElementById('transfer-sel').value;
-      if (!adminId) { Utils.toast('Sélectionnez un administrateur', 'error'); return; }
+      if (!adminId) { Utils.toast('SÃ©lectionnez un administrateur', 'error'); return; }
       const req = await RequestStore.getById(id);
       const u = Auth.getUser();
       // Notifier le nouvel admin
-      await NotifStore.create({ user_id: adminId, type: 'REQUEST_TRANSFERRED', title: 'Requête transférée', message: 'La requête ' + (req?.reference_number||'') + ' vous a été transférée par ' + (u.first_name||'') + ' ' + (u.last_name||''), request_id: id, request_ref: req?.reference_number });
+      await NotifStore.create({ user_id: adminId, type: 'REQUEST_TRANSFERRED', title: 'RequÃªte transfÃ©rÃ©e', message: 'La requÃªte ' + (req?.reference_number||'') + ' vous a Ã©tÃ© transfÃ©rÃ©e par ' + (u.first_name||'') + ' ' + (u.last_name||''), request_id: id, request_ref: req?.reference_number });
       // Notifier l'etudiant
-      if (req?.student_id) { await NotifStore.create({ user_id: req.student_id, type: 'REQUEST_TRANSFERRED', title: 'Requête transférée', message: 'Votre requête ' + req.reference_number + ' a été transférée à un autre administrateur.', request_id: id, request_ref: req.reference_number }); }
+      if (req?.student_id) { await NotifStore.create({ user_id: req.student_id, type: 'REQUEST_TRANSFERRED', title: 'RequÃªte transfÃ©rÃ©e', message: 'Votre requÃªte ' + req.reference_number + ' a Ã©tÃ© transfÃ©rÃ©e Ã  un autre administrateur.', request_id: id, request_ref: req.reference_number }); }
       // Historique
-      await SB.insert('request_status_history', { request_id: id, status: req?.status || 'IN_PROGRESS', changed_by: (u.first_name||'')+' '+(u.last_name||''), reason: 'Transférée à un autre administrateur' });
-      Auth.addAudit('TRANSFERT', (req?.reference_number||'') + ' transférée');
-      Utils.toast('Requête transférée avec succès', 'success');
+      await SB.insert('request_status_history', { request_id: id, status: req?.status || 'IN_PROGRESS', changed_by: (u.first_name||'')+' '+(u.last_name||''), reason: 'TransfÃ©rÃ©e Ã  un autre administrateur' });
+      Auth.addAudit('TRANSFERT', (req?.reference_number||'') + ' transfÃ©rÃ©e');
+      Utils.toast('RequÃªte transfÃ©rÃ©e avec succÃ¨s', 'success');
       this.route();
     },
 
@@ -416,13 +416,13 @@
 
     pgProfile() {
       const u = Auth.getUser();
-      return `<div style="max-width:640px"><h1 class="page-title mb-3">Mon profil</h1><div class="card"><div class="flex items-center gap-3 mb-3"><div class="user-avatar" style="width:56px;height:56px;font-size:20px">${(u.first_name||'A')[0]}${(u.last_name||'')[0]||''}</div><div><p class="fw-600" style="font-size:18px">${u.first_name||''} ${u.last_name||''}</p><p class="text-muted" style="font-size:13px">${u.email}</p><p class="text-muted" style="font-size:13px">Administrateur</p></div></div><form onsubmit="return Admin.updateProfile(event)"><div class="form-row"><div class="form-group"><label class="form-label">Prénom</label><input class="form-input" id="p-fn" value="${u.first_name||''}"></div><div class="form-group"><label class="form-label">Nom</label><input class="form-input" id="p-ln" value="${u.last_name||''}"></div></div><div class="form-group"><label class="form-label">Telephone</label><input class="form-input" id="p-ph" value="${u.phone||''}"></div><button type="submit" class="btn btn-primary">Enregistrer</button></form></div></div>`;
+      return `<div style="max-width:640px"><h1 class="page-title mb-3">Mon profil</h1><div class="card"><div class="flex items-center gap-3 mb-3"><div class="user-avatar" style="width:56px;height:56px;font-size:20px">${(u.first_name||'A')[0]}${(u.last_name||'')[0]||''}</div><div><p class="fw-600" style="font-size:18px">${u.first_name||''} ${u.last_name||''}</p><p class="text-muted" style="font-size:13px">${u.email}</p><p class="text-muted" style="font-size:13px">Administrateur</p></div></div><form onsubmit="return Admin.updateProfile(event)"><div class="form-row"><div class="form-group"><label class="form-label">PrÃ©nom</label><input class="form-input" id="p-fn" value="${u.first_name||''}"></div><div class="form-group"><label class="form-label">Nom</label><input class="form-input" id="p-ln" value="${u.last_name||''}"></div></div><div class="form-group"><label class="form-label">Telephone</label><input class="form-input" id="p-ph" value="${u.phone||''}"></div><button type="submit" class="btn btn-primary">Enregistrer</button></form></div></div>`;
     },
 
     async updateProfile(e) {
       e.preventDefault();
       await Auth.updateProfile({ first_name: document.getElementById('p-fn').value, last_name: document.getElementById('p-ln').value, phone: document.getElementById('p-ph').value });
-      Utils.toast('Profil mis à jour', 'success');
+      Utils.toast('Profil mis Ã  jour', 'success');
       this.route();
       return false;
     },

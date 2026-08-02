@@ -400,11 +400,17 @@ tbody tr:hover { background: var(--gray-50); }
   flex: 1; min-width: 240px; padding-left: 40px; position: relative;
 }
 .search-wrapper { position: relative; flex: 1; min-width: 240px; }
-.search-wrapper svg {
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-  width: 18px; height: 18px; color: var(--text-muted); pointer-events: none;
+.search-wrapper .form-input { padding-left: 16px; padding-right: 52px; }
+.search-wrapper .search-btn {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 38px; height: calc(100% - 8px); padding: 0;
+  background: var(--primary); color: #fff; border: none;
+  border-radius: calc(var(--radius) - 2px);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.15s; flex-shrink: 0;
 }
-.search-wrapper .form-input { padding-left: 40px; }
+.search-wrapper .search-btn svg { width: 17px; height: 17px; stroke: #fff; pointer-events: none; }
+.search-wrapper .search-btn:hover { background: var(--primary-dark, #0d47a1); }
 .filter-select { min-width: 180px; }
 
 /* --- Empty State --- */
