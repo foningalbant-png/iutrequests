@@ -623,6 +623,8 @@ const Pages = {
 
     const statusColors = {'SUBMITTED':'var(--primary)','RECEIVED':'#5C6BC0','IN_PROGRESS':'var(--yellow)','AWAITING_DOCUMENTS':'#E65100','VALIDATED':'var(--green)','PROCESSED':'#00695C','REJECTED':'var(--red)','CLOSED':'var(--gray-400)','REOPENED':'#7B1FA2','DRAFT':'var(--gray-300)'};
 
+    const allReversed = allRequests.slice().reverse();
+
     return `
     <div class="page-header">
       <h1 class="page-title">${t('req.my')} <span style="font-size:14px;font-weight:500;color:var(--text-muted);margin-left:8px">${allRequests.length} au total</span></h1>
@@ -643,13 +645,18 @@ const Pages = {
           <option value="">Tous les statuts</option>
           ${statusOpts}
         </select>
-        ${(statusFilter||searchTerm) ? '<button class="btn btn-ghost btn-sm" onclick="Pages.clearFilters()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Effacer</button>' : ''}
+        <button id="filter-clear-btn" class="btn btn-ghost btn-sm" onclick="Pages.clearFilters()" style="display:${(statusFilter||searchTerm)?'':'none'}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Effacer
+        </button>
       </div>
 
-      ${requests.length > 0 ? `
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;padding:0 4px">${requests.length} requête(s)${statusFilter ? ' &bull; Filtre : '+CONFIG.STATUSES[statusFilter]?.fr : ''}${searchTerm ? ' &bull; Recherche : "'+Utils.escapeHtml(searchTerm)+'"' : ''}</p>
-        ${paged.map(r => `
-          <div class="req-card-row" onclick="location.hash='#/requests/${r.id}'">
+      <p id="req-list-count" style="font-size:12px;color:var(--text-muted);margin-bottom:8px;padding:0 4px;display:${allReversed.length>0?'':'none'}">${allReversed.length} requête(s)</p>
+
+      <div id="req-list-items">
+        ${allReversed.map(r => `
+          <div class="req-card-row" onclick="location.hash='#/requests/${r.id}'"
+               data-search="${Utils.escapeHtml((r.reference_number+' '+r.title+' '+(r.category_name||'')).toLowerCase())}"
+               data-status="${r.status}">
             <div class="req-card-dot" style="background:${statusColors[r.status]||'var(--gray-300)'}"></div>
             <div class="req-card-main">
               <div class="req-card-title">${Utils.escapeHtml(r.title)}</div>
@@ -663,35 +670,44 @@ const Pages = {
               <span class="req-card-date">${Utils.formatDate(r.created_at)}</span>
             </div>
           </div>`).join('')}
-        ${totalPages > 1 ? `
-          <div class="pagination">
-            <span class="pagination-info">Page ${page}/${totalPages}</span>
-            <div class="flex gap-1">
-              ${page>1?'<button class="btn btn-outline btn-sm" onclick="localStorage.setItem(\'iut-page\',\''+(page-1)+'\');App.route()">&larr; Précédent</button>':''}
-              ${page<totalPages?'<button class="btn btn-outline btn-sm" onclick="localStorage.setItem(\'iut-page\',\''+(page+1)+'\');App.route()">Suivant &rarr;</button>':''}
-            </div>
-          </div>` : ''}
-      ` : `
-        <div class="empty-state">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <p>${searchTerm || statusFilter ? 'Aucune requête ne correspond à votre recherche.' : 'Aucune requête pour le moment.'}</p>
-          ${!searchTerm && !statusFilter ? '<a href="#/requests/new" class="btn btn-primary btn-sm mt-2">Soumettre ma première requête</a>' : ''}
-        </div>`}
+      </div>
+
+      <div id="req-list-empty" class="empty-state" style="display:${allReversed.length===0?'':'none'}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <p>Aucune requête pour le moment.</p>
+        <a href="#/requests/new" class="btn btn-primary btn-sm mt-2">Soumettre ma première requête</a>
+      </div>
     </div>`;
   },
 
   filterRequests() {
-    const search = document.getElementById('search-input')?.value || '';
+    const search = (document.getElementById('search-input')?.value || '').toLowerCase();
     const status = document.getElementById('status-filter')?.value || '';
     localStorage.setItem('iut-filter-search', search);
     localStorage.setItem('iut-filter-status', status);
-    App.route();
+    const cards = document.querySelectorAll('#req-list-items [data-search]');
+    let visible = 0;
+    cards.forEach(card => {
+      const match = (!search || card.dataset.search.includes(search)) && (!status || card.dataset.status === status);
+      card.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    const counter = document.getElementById('req-list-count');
+    const empty = document.getElementById('req-list-empty');
+    const clearBtn = document.getElementById('filter-clear-btn');
+    if (counter) { counter.textContent = visible + ' requête(s)'; counter.style.display = visible > 0 ? '' : 'none'; }
+    if (empty) empty.style.display = visible === 0 ? '' : 'none';
+    if (clearBtn) clearBtn.style.display = (search || status) ? '' : 'none';
   },
 
   clearFilters() {
     localStorage.removeItem('iut-filter-search');
     localStorage.removeItem('iut-filter-status');
-    App.route();
+    const si = document.getElementById('search-input');
+    const sf = document.getElementById('status-filter');
+    if (si) si.value = '';
+    if (sf) sf.value = '';
+    this.filterRequests();
   },
 
   // =====================================================

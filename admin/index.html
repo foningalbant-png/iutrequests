@@ -128,15 +128,35 @@
       ${oldest.length>0?'<div class="card"><div class="card-header"><span class="card-title">Requêtes en attente les plus anciennes</span><a href="#/requests" class="btn btn-ghost btn-sm">Tout</a></div><div class="table-container"><table><thead><tr><th>Référence</th><th>Objet</th><th>Étudiant</th><th>Matricule</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+oldest.map(r=>'<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td class="font-mono text-primary" style="font-size:13px">'+r.reference_number+'</td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.student_name||'')+'</td><td class="text-muted" style="font-size:13px">'+(r.student_matricule||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.created_at)+'</td></tr>').join('')+'</tbody></table></div></div>':'<div class="card"><div class="empty-state"><p>Aucune requête en attente.</p></div></div>'}`;
     },
 
+    filterReqs(q) {
+      const lower = q.toLowerCase();
+      const rows = document.querySelectorAll('#adm-reqs-tbody tr[data-search]');
+      let visible = 0;
+      rows.forEach(row => {
+        const match = !lower || row.dataset.search.includes(lower);
+        row.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+      const counter = document.getElementById('adm-reqs-count');
+      const empty = document.getElementById('adm-reqs-empty');
+      const clearBtn = document.getElementById('adm-reqs-clear');
+      if (counter) counter.textContent = 'Requêtes (' + visible + ')';
+      if (empty) empty.style.display = visible === 0 ? '' : 'none';
+      if (clearBtn) clearBtn.style.display = q ? '' : 'none';
+    },
+    clearReqsFilter() {
+      const input = document.getElementById('adm-search');
+      if (input) input.value = '';
+      this.filterReqs('');
+    },
     async pgReqs() {
-      const all = await RequestStore.getAll();
-      const search = localStorage.getItem('adm-search')||'';
-      let reqs = search ? all.filter(r=>(r.reference_number||'').toLowerCase().includes(search.toLowerCase())||(r.title||'').toLowerCase().includes(search.toLowerCase())||(r.student_name||'').toLowerCase().includes(search.toLowerCase())) : all;
+      const all = (await RequestStore.getAll()).slice().reverse();
       return `
-      <div class="page-header"><h1 class="page-title">Requêtes (${all.length})</h1></div>
+      <div class="page-header"><h1 id="adm-reqs-count" class="page-title">Requêtes (${all.length})</h1></div>
       <div class="card">
-        <div class="filters"><div class="search-wrapper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="form-input" placeholder="Rechercher..." value="${Utils.escapeHtml(search)}" oninput="localStorage.setItem('adm-search',this.value);Admin.route()"></div>${search?'<button class="btn btn-ghost btn-sm" onclick="localStorage.removeItem(\'adm-search\');Admin.route()">Réinitialiser</button>':''}</div>
-        ${reqs.length>0?'<div class="table-container"><table><thead><tr><th>Référence</th><th>Objet</th><th>Étudiant</th><th>Matricule</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+reqs.map(r=>'<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td class="font-mono text-primary" style="font-size:13px">'+r.reference_number+'</td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.student_name||'')+'</td><td class="text-muted" style="font-size:13px">'+(r.student_matricule||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.created_at)+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty-state"><p>Aucune requête</p></div>'}
+        <div class="filters"><div class="search-wrapper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="form-input" id="adm-search" placeholder="Rechercher..." oninput="Admin.filterReqs(this.value)"></div><button id="adm-reqs-clear" class="btn btn-ghost btn-sm" style="display:none" onclick="Admin.clearReqsFilter()">Réinitialiser</button></div>
+        <div class="table-container"><table><thead><tr><th>Référence</th><th>Objet</th><th>Étudiant</th><th>Matricule</th><th>Statut</th><th>Date</th></tr></thead><tbody id="adm-reqs-tbody">${all.map(r=>'<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'" data-search="'+Utils.escapeHtml((r.reference_number+' '+r.title+' '+(r.student_name||'')+' '+(r.student_matricule||'')).toLowerCase())+'"><td class="font-mono text-primary" style="font-size:13px">'+r.reference_number+'</td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.student_name||'')+'</td><td class="text-muted" style="font-size:13px">'+(r.student_matricule||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.created_at)+'</td></tr>').join('')}</tbody></table></div>
+        <div id="adm-reqs-empty" class="empty-state" style="display:${all.length===0?'':'none'}"><p>Aucune requête</p></div>
       </div>`;
     },
 

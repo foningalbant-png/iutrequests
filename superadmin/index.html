@@ -191,19 +191,39 @@
     },
 
     /* ===================== REQUETES + RECHERCHE ===================== */
+    filterReqs(q) {
+      localStorage.setItem('sa-search', q);
+      const lower = q.toLowerCase();
+      const rows = document.querySelectorAll('#sa-reqs-tbody tr[data-search]');
+      let visible = 0;
+      rows.forEach(row => {
+        const match = !lower || row.dataset.search.includes(lower);
+        row.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+      const counter = document.getElementById('sa-reqs-count');
+      const empty = document.getElementById('sa-reqs-empty');
+      const clearBtn = document.getElementById('sa-reqs-clear');
+      if (counter) counter.textContent = 'Toutes les requêtes (' + visible + ')';
+      if (empty) empty.style.display = visible === 0 ? '' : 'none';
+      if (clearBtn) clearBtn.style.display = q ? '' : 'none';
+    },
+    clearReqsFilter() {
+      const input = document.getElementById('sa-search');
+      if (input) input.value = '';
+      this.filterReqs('');
+    },
     async pgReqs() {
-      const all=await RequestStore.getAll();
-      const search=localStorage.getItem('sa-search')||'';
-      let reqs=search?all.filter(r=>r.reference_number.toLowerCase().includes(search.toLowerCase())||r.title.toLowerCase().includes(search.toLowerCase())||(r.student_name||'').toLowerCase().includes(search.toLowerCase())):all;
-      reqs=reqs.slice().reverse();
+      const all=(await RequestStore.getAll()).slice().reverse();
       return `
-      <div class="page-header"><h1 class="page-title">Toutes les requêtes (${all.length})</h1></div>
+      <div class="page-header"><h1 id="sa-reqs-count" class="page-title">Toutes les requêtes (${all.length})</h1></div>
       <div class="card">
         <div class="filters">
-          <div class="search-wrapper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="form-input" id="sa-search" placeholder="Rechercher par référence, objet ou étudiant..." value="${Utils.escapeHtml(search)}" oninput="localStorage.setItem('sa-search',this.value);SA.route()"></div>
-          ${search?'<button class="btn btn-ghost btn-sm" onclick="localStorage.removeItem(\'sa-search\');SA.route()">Réinitialiser</button>':''}
+          <div class="search-wrapper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="form-input" id="sa-search" placeholder="Rechercher par référence, objet ou étudiant..." oninput="SA.filterReqs(this.value)"></div>
+          <button id="sa-reqs-clear" class="btn btn-ghost btn-sm" style="display:none" onclick="SA.clearReqsFilter()">Réinitialiser</button>
         </div>
-        ${reqs.length>0?'<div class="table-container"><table><thead><tr><th>Référence</th><th>Objet</th><th>Étudiant</th><th>Dept</th><th>Catégorie</th><th>Statut</th><th>Date</th></tr></thead><tbody>'+reqs.map(r=>'<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'"><td class="font-mono text-primary" style="font-size:13px">'+r.reference_number+'</td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.student_name||'')+'</td><td class="text-muted" style="font-size:13px">'+(r.department||'')+'</td><td class="text-secondary" style="font-size:13px">'+(r.category_name||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.created_at)+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty-state"><p>Aucune requête trouvée</p></div>'}
+        <div class="table-container"><table><thead><tr><th>Référence</th><th>Objet</th><th>Étudiant</th><th>Dept</th><th>Catégorie</th><th>Statut</th><th>Date</th></tr></thead><tbody id="sa-reqs-tbody">${all.map(r=>'<tr style="cursor:pointer" onclick="location.hash=\'#/requests/'+r.id+'\'" data-search="'+Utils.escapeHtml((r.reference_number+' '+r.title+' '+(r.student_name||'')+' '+(r.department||'')+' '+(r.category_name||'')).toLowerCase())+'"><td class="font-mono text-primary" style="font-size:13px">'+r.reference_number+'</td><td>'+Utils.escapeHtml(r.title)+'</td><td class="text-secondary" style="font-size:13px">'+(r.student_name||'')+'</td><td class="text-muted" style="font-size:13px">'+(r.department||'')+'</td><td class="text-secondary" style="font-size:13px">'+(r.category_name||'')+'</td><td>'+Utils.statusBadge(r.status)+'</td><td class="text-muted" style="font-size:13px">'+Utils.formatDate(r.created_at)+'</td></tr>').join('')}</tbody></table></div>
+        <div id="sa-reqs-empty" class="empty-state" style="display:${all.length===0?'':'none'}"><p>Aucune requête</p></div>
       </div>`;
     },
 
