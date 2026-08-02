@@ -655,7 +655,7 @@ const Pages = {
       <div id="req-list-items">
         ${allReversed.map(r => `
           <div class="req-card-row" onclick="location.hash='#/requests/${r.id}'"
-               data-search="${Utils.escapeHtml((r.reference_number+' '+r.title+' '+(r.category_name||'')).toLowerCase())}"
+               data-search="${((r.reference_number||'')+' '+(r.title||'')+' '+(r.category_name||'')).toLowerCase().replace(/"/g,'')}"
                data-status="${r.status}">
             <div class="req-card-dot" style="background:${statusColors[r.status]||'var(--gray-300)'}"></div>
             <div class="req-card-main">
