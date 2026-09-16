@@ -185,7 +185,7 @@ const Pages = {
             <div style="width:48px;height:48px;border-radius:12px;background:#E8F5E9;display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
             <h4>WhatsApp</h4>
             <p style="font-size:14px;color:var(--text-secondary)">+237 655 741 214</p>
-            <a href="https://wa.me/237655741214" target="_blank" class="btn btn-outline btn-sm mt-2" style="color:#2E7D32;border-color:#2E7D32">Écrire sur WhatsApp</a>
+            <a href="https://wa.me/237699041852" target="_blank" class="btn btn-outline btn-sm mt-2" style="color:#2E7D32;border-color:#2E7D32">Écrire sur WhatsApp</a>
           </div>
           <div class="card" style="text-align:center">
             <div style="width:48px;height:48px;border-radius:12px;background:var(--yellow-light);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--yellow-dark)" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
@@ -516,12 +516,12 @@ const Pages = {
     const requests = await RequestStore.getByStudent(user.id);
     const counts = { total: requests.length, pending: 0, validated: 0, rejected: 0, awaiting: 0 };
     requests.forEach(r => {
-      if (['SUBMITTED','RECEIVED','IN_PROGRESS'].includes(r.status)) counts.pending++;
+      if (['SUBMITTED','RECEIVED','IN_PROGRESS','REOPENED'].includes(r.status)) counts.pending++;
       if (['VALIDATED','PROCESSED'].includes(r.status)) counts.validated++;
       if (r.status === 'REJECTED') counts.rejected++;
       if (r.status === 'AWAITING_DOCUMENTS') counts.awaiting++;
     });
-    const recent = requests.slice(-5).reverse();
+    const recent = requests.slice(0, 5);
 
     const greetHour = new Date().getHours();
     const greet = greetHour < 12 ? 'Bonjour' : greetHour < 18 ? 'Bon après-midi' : 'Bonsoir';
@@ -613,7 +613,6 @@ const Pages = {
     let requests = allRequests;
     if (statusFilter) requests = requests.filter(r => r.status === statusFilter);
     if (searchTerm) requests = requests.filter(r => r.reference_number.toLowerCase().includes(searchTerm.toLowerCase()) || r.title.toLowerCase().includes(searchTerm.toLowerCase()));
-    requests = requests.slice().reverse();
     const perPage = 15;
     const page = parseInt(localStorage.getItem('iut-page') || '1');
     const totalPages = Math.ceil(requests.length / perPage) || 1;
@@ -623,7 +622,7 @@ const Pages = {
 
     const statusColors = {'SUBMITTED':'var(--primary)','RECEIVED':'#5C6BC0','IN_PROGRESS':'var(--yellow)','AWAITING_DOCUMENTS':'#E65100','VALIDATED':'var(--green)','PROCESSED':'#00695C','REJECTED':'var(--red)','CLOSED':'var(--gray-400)','REOPENED':'#7B1FA2','DRAFT':'var(--gray-300)'};
 
-    const allReversed = allRequests.slice().reverse();
+    const allReversed = allRequests;
 
     return `
     <div class="page-header">
@@ -860,6 +859,21 @@ const Pages = {
     req.statusHistory = history;
     try { req.file_urls = typeof req.file_urls === 'string' ? JSON.parse(req.file_urls) : (req.file_urls || []); } catch(e) { req.file_urls = []; }
 
+    const _stepMap = { DRAFT:-1, SUBMITTED:0, RECEIVED:1, IN_PROGRESS:2, AWAITING_DOCUMENTS:2, REOPENED:2, VALIDATED:3, PROCESSED:3, REJECTED:-2, CLOSED:4 };
+    const _cur = _stepMap[req.status] ?? 0;
+    const _rej = req.status === 'REJECTED';
+    const _checkSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+    const _xSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    const _dotSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>';
+    const _stepLabels = ['Soumise','Reçue','En traitement',_rej?'Rejetée':'Validée','Clôturée'];
+    const _stepperHtml = '<div class="req-stepper">' + _stepLabels.map((lbl,i) => {
+      const _isDone = (_rej&&i<3) || (_cur>=0&&i<_cur);
+      const cls = (_rej&&i===3)?'rejected':_isDone?'done':(_cur>=0&&i===_cur)?'active':'';
+      const ico = _isDone?_checkSvg:(_rej&&i===3)?_xSvg:_dotSvg;
+      const conn = i<4?'<div class="req-step-connector'+(_isDone?' done':'')+'"></div>':'';
+      return '<div class="req-step '+cls+'"><div class="req-step-dot">'+ico+'</div><span class="req-step-label">'+lbl+'</span></div>'+conn;
+    }).join('') + '</div>';
+
     return `
     <div class="flex items-center gap-2 mb-3">
       <a href="#/requests" class="btn btn-ghost btn-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></a>
@@ -867,6 +881,7 @@ const Pages = {
       ${Utils.statusBadge(req.status)}
       <button class="btn btn-ghost btn-sm" onclick="window.print()" title="Imprimer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
     </div>
+    ${_stepperHtml}
 
     <div class="grid" style="grid-template-columns:2fr 1fr;gap:24px">
       <div>
@@ -879,7 +894,7 @@ const Pages = {
         <div class="card mb-3">
           <h3 class="card-title mb-2">${t('req.messages')}</h3>
           <div class="messages-container" id="messages-container">
-            ${(req.messages||[]).length > 0 ? req.messages.map(m => '<div class="message '+(m.senderId===user.id?'message-sent':'message-received')+'"><div class="message-bubble"><div class="message-sender">'+Utils.escapeHtml(m.senderName)+(m.senderRole==='ADMIN'?' (Admin)':'')+'</div>'+Utils.escapeHtml(m.content)+'<div class="message-meta">'+Utils.formatDateTime(m.createdAt)+'</div></div></div>').join('') : '<p class="text-center text-muted" style="padding:20px;font-size:14px">Aucun message. Envoyez un message à l\'administration ci-dessous.</p>'}
+            ${(req.messages||[]).length > 0 ? req.messages.map(m => '<div class="message '+(m.sender_id===user.id?'message-sent':'message-received')+'"><div class="message-bubble"><div class="message-sender">'+Utils.escapeHtml(m.sender_name||'')+(m.sender_role==='ADMIN'?' (Admin)':'')+'</div>'+Utils.escapeHtml(m.content)+'<div class="message-meta">'+Utils.formatDateTime(m.created_at)+'</div></div></div>').join('') : '<p class="text-center text-muted" style="padding:20px;font-size:14px">Aucun message. Envoyez un message à l\'administration ci-dessous.</p>'}
           </div>
           <div class="message-input-bar">
             <input type="text" class="form-input" id="message-input" placeholder="${t('req.typePlaceholder')}" onkeydown="if(event.key==='Enter')Pages.sendMessage('${id}')">
@@ -924,7 +939,7 @@ const Pages = {
     const input = document.getElementById('message-input');
     if (!input || !input.value.trim()) return;
     const user = Auth.getUser();
-    await RequestStore.addMessage(requestId, user.id, (user.first_name||(user.first_name||user.firstName||'')||'')+' '+(user.last_name||(user.last_name||user.lastName||'')||''), user.role||'STUDENT', input.value.trim());
+    await RequestStore.addMessage(requestId, user.id, (user.first_name||user.firstName||'')+' '+(user.last_name||user.lastName||''), user.role||'STUDENT', input.value.trim());
     App.route();
   },
 
@@ -937,6 +952,13 @@ const Pages = {
   async reopenRequest(id) {
     const user = Auth.getUser();
     await RequestStore.updateStatus(id, 'REOPENED', 'Réouverture demandée par l\'étudiant', (user.first_name||'')+' '+(user.last_name||''));
+    const req = await RequestStore.getById(id);
+    const admins = await SB.select('profiles', 'role=eq.ADMIN&is_active=eq.true');
+    const superAdmins = await SB.select('profiles', 'role=eq.SUPER_ADMIN&is_active=eq.true');
+    if (req) {
+      if (admins) { for (const admin of admins) { await NotifStore.create({ user_id: admin.id, type: 'STUDENT_REMINDER', title: 'Requête réouverte', message: 'L\'étudiant ' + (req.student_name||'') + ' a rouvert la requête ' + req.reference_number + '.', request_id: id, request_ref: req.reference_number }); } }
+      if (superAdmins) { for (const sa of superAdmins) { await NotifStore.create({ user_id: sa.id, type: 'STUDENT_REMINDER', title: 'Requête réouverte', message: 'L\'étudiant ' + (req.student_name||'') + ' a rouvert la requête ' + req.reference_number + '.', request_id: id, request_ref: req.reference_number }); } }
+    }
     Utils.toast('Requête réouverte', 'success');
     App.route();
   },
@@ -963,18 +985,63 @@ const Pages = {
     const t = I18N.t.bind(I18N);
     const notifs = await NotifStore.getAll(user.id);
     const unread = notifs.filter(n => !n.is_read).length;
+
+    const typeIcon = type => {
+      if (type === 'REQUEST_CREATED')    return ['notif-icon-created', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>'];
+      if (type === 'STATUS_CHANGED')     return ['notif-icon-status', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>'];
+      if (type === 'DOCUMENT_REQUESTED') return ['notif-icon-doc', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>'];
+      if (type === 'ADMIN_RESPONSE')     return ['notif-icon-message', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'];
+      if (type === 'STUDENT_REMINDER')    return ['notif-icon-remind', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'];
+      if (type === 'REQUEST_READ')         return ['notif-icon-status', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'];
+      if (type === 'REQUEST_TRANSFERRED')  return ['notif-icon-doc', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>'];
+      return ['notif-icon-default', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'];
+    };
+
+    const dayKey = dateStr => {
+      const d = new Date(dateStr); const now = new Date();
+      const diffDays = Math.floor((now - d) / 86400000);
+      if (diffDays < 1) return 'Aujourd\'hui';
+      if (diffDays < 2) return 'Hier';
+      if (diffDays < 7) return 'Cette semaine';
+      return 'Plus ancien';
+    };
+
+    const grouped = {};
+    const groupOrder = ['Aujourd\'hui','Hier','Cette semaine','Plus ancien'];
+    notifs.forEach(n => { const g = dayKey(n.created_at||n.createdAt); if (!grouped[g]) grouped[g] = []; grouped[g].push(n); });
+
+    const notifHtml = groupOrder.filter(g => grouped[g]).map(g => {
+      const header = '<div class="notif-date-header">'+g+'</div>';
+      const items = grouped[g].map(n => {
+        const [iconCls, iconSvg] = typeIcon(n.type);
+        const ref = n.request_ref||n.requestRef||'';
+        const rid = n.request_id||n.requestId||'';
+        return '<div class="notif-item'+(n.is_read?'':' unread')+'" onclick="Pages.readNotif(\''+n.id+'\',\''+rid+'\')">'
+          + '<div class="notif-type-icon '+iconCls+'">'+iconSvg+'</div>'
+          + '<div style="flex:1;min-width:0">'
+          +   '<p class="fw-600" style="font-size:14px">'+Utils.escapeHtml(n.title)+'</p>'
+          +   '<p class="text-secondary" style="font-size:13px;margin-top:2px">'+Utils.escapeHtml(n.message)+'</p>'
+          +   (ref?'<span class="font-mono text-primary" style="font-size:12px">'+ref+'</span>':'')
+          +   '<p class="text-muted" style="font-size:12px;margin-top:4px">'+Utils.timeAgo(n.created_at||n.createdAt)+'</p>'
+          + '</div>'
+          + '<div class="notif-unread-dot'+(n.is_read?' read':'')+'"></div>'
+          + '</div>';
+      }).join('');
+      return header + items;
+    }).join('');
+
     return `
     <div class="page-header">
       <div><h1 class="page-title">${t('notif.title')}</h1>${unread > 0 ? '<p class="page-subtitle">'+unread+' '+t('notif.unread')+'</p>' : ''}</div>
       ${unread > 0 ? '<button class="btn btn-outline btn-sm" onclick="Pages.markAllNotifRead()">'+t('notif.markAllRead')+'</button>' : ''}
     </div>
     <div class="card" style="padding:0">
-      ${notifs.length > 0 ? notifs.map(n => '<div style="display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);'+(n.is_read?'':'background:rgba(21,101,192,0.04)')+';cursor:pointer" onclick="Pages.readNotif(\''+n.id+'\',\''+((n.request_id||n.requestId||'')||'')+'\')"><div style="width:8px;height:8px;border-radius:50%;margin-top:6px;flex-shrink:0;background:'+(n.is_read?'transparent':'var(--primary)')+'"></div><div style="flex:1;min-width:0"><p class="fw-600" style="font-size:14px">'+Utils.escapeHtml(n.title)+'</p><p class="text-secondary" style="font-size:13px;margin-top:2px">'+Utils.escapeHtml(n.message)+'</p>'+((n.request_ref||n.requestRef||'')?'<span class="font-mono text-primary" style="font-size:12px">'+(n.request_ref||n.requestRef||'')+'</span>':'')+'<p class="text-muted" style="font-size:12px;margin-top:4px">'+Utils.timeAgo((n.created_at||n.createdAt))+'</p></div></div>').join('') : '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg><p>'+t('notif.none')+'</p></div>'}
+      ${notifs.length > 0 ? notifHtml : '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg><p>'+t('notif.none')+'</p></div>'}
     </div>`;
   },
 
-  readNotif(id, requestId) { NotifStore.markAsRead(id); if (requestId && requestId !== 'undefined') location.hash = '#/requests/'+requestId; else App.route(); },
-  markAllNotifRead() { const u = Auth.getUser(); NotifStore.markAllAsRead(u.id); App.route(); },
+  async readNotif(id, requestId) { await NotifStore.markAsRead(id); if (requestId && requestId !== 'undefined') location.hash = '#/requests/'+requestId; else App.route(); },
+  async markAllNotifRead() { const u = Auth.getUser(); await NotifStore.markAllAsRead(u.id); App.route(); },
 
   // =====================================================
   //  PROFIL + MOT DE PASSE + SUPPRESSION COMPTE
