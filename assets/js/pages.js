@@ -184,7 +184,7 @@ const Pages = {
           <div class="card" style="text-align:center">
             <div style="width:48px;height:48px;border-radius:12px;background:#E8F5E9;display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
             <h4>WhatsApp</h4>
-            <p style="font-size:14px;color:var(--text-secondary)">+237 655 741 214</p>
+            <p style="font-size:14px;color:var(--text-secondary)">+237 699 041 852</p>
             <a href="https://wa.me/237699041852" target="_blank" class="btn btn-outline btn-sm mt-2" style="color:#2E7D32;border-color:#2E7D32">Écrire sur WhatsApp</a>
           </div>
           <div class="card" style="text-align:center">
